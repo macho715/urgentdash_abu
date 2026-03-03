@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>HyIE-ERC² v2026.05 — SHELTER MODE</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚠️</text></svg>"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020617;font-family:'Inter',-apple-system,system-ui,sans-serif}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+
+const INTEL_FEED=[
+{ts:"Mar 3 14:00",priority:"CRITICAL",verified:true,text:"Emirates & Etihad 모든 상업 운항 3월 5일 14:00까지 중단 연장",src:"LoyaltyLobby / Etihad 공식",impact:"I02 = 1.00 유지. 제한적 본국송환 편만 허용."},
+{ts:"Mar 3 13:30",priority:"CRITICAL",verified:true,text:"미국 국무부 — 중동 12개국 이상 시민에 즉시 출국 촉구",src:"Al Jazeera / NBC News",impact:"I01 state 1.00 재확인. I07 강화."},
+{ts:"Mar 3 12:00",priority:"HIGH",verified:true,text:"이란 3일 연속 걸프 지역 보복 공격 지속 — UAE/카타르/쿠웨이트 폭발",src:"Al Jazeera / CNBC",impact:"I03 = 1.00 유지. active_strike_window = true 연장."},
+{ts:"Mar 3 11:00",priority:"HIGH",verified:true,text:"이스라엘, 이란·헤즈볼라 동시 타격 (테헤란+베이루트) — 분쟁 확대",src:"CNBC Live Updates",impact:"에스컬레이션 추가. 이란 추가 보복 가능성↑"},
+{ts:"Mar 3 10:30",priority:"HIGH",verified:true,text:"인도 특별 구호편 10편 운항, UAE 제한적 출발 재개",src:"Outlook India / India TV",impact:"I07 state 1.00. 타국 대피 본격화."},
+{ts:"Mar 3 09:00",priority:"MEDIUM",verified:true,text:"태국 총리: 군용기 동원 중동 자국민 대피 준비 — 11,000명+ UAE 거주",src:"Nation Thailand",impact:"I07 추가 강화. 군사적 대피 수단 동원 단계."},
+{ts:"Mar 2 22:00",priority:"CRITICAL",verified:true,text:"미 국무부 비긴급 직원 + 가족 UAE 출국 명령 (Ordered Departure)",src:"US Embassy UAE / NBC News",impact:"I01 = 1.00. 미국 Ordered Departure는 극히 이례적."},
+{ts:"Mar 2 20:00",priority:"HIGH",verified:true,text:"AWS 데이터센터 2곳(UAE) + 1곳(바레인) 드론 피격으로 오프라인",src:"CNBC",impact:"I05 state 0.15↑ — 인프라 피해 시작."},
+{ts:"Mar 2 18:00",priority:"MEDIUM",verified:true,text:"UAE 슈퍼마켓 재고 안정화 — 패닉바잉 진정, 정부 비축분 충분",src:"The National / Khaleej Times / Gulf News",impact:"I06 0.50→0.35 하향."},
+{ts:"Mar 2 15:00",priority:"HIGH",verified:true,text:"영국·호주 UAE 여행경보 'Do Not Travel' 최고 단계 격상",src:"VisaHQ / FCDO",impact:"I07 = 1.00 재확인."},
+{ts:"Mar 1 16:00",priority:"CRITICAL",verified:true,text:"UAE 국방부: 탄도미사일 165발, 드론 541기 탐지 — 3사망 58부상",src:"UAE MoD / Khaleej Times",impact:"I03 = 1.00. 파편 낙하로 민간 피해."},
+{ts:"Feb 28 23:00",priority:"CRITICAL",verified:true,text:"이란, 미-이스라엘 공습 보복으로 UAE 포함 걸프 전역 공격 개시",src:"Al Jazeera / CNN / Euronews",impact:"전체 상황 개시점."},
+];
+
+const INDICATORS=[
+{id:"I01",name:"공식 여행경보/대사관 공지",tier:"TIER0",state:1.0,confirmed:true,src:"US State Dept, NL, UK, AU, KR",ts:"Mar 3 13:30",detail:"미국 Ordered Departure, 영국·호주 Do Not Travel, 한국 특별여행주의보",srcCount:5,cv:true},
+{id:"I02",name:"공항/항공 운영",tier:"TIER0",state:1.0,confirmed:true,src:"Etihad, GCAA, LoyaltyLobby",ts:"Mar 3 14:00",detail:"Etihad/Emirates 3/5 14:00까지 전편 중단. 영공 부분 폐쇄.",srcCount:4,cv:true},
+{id:"I03",name:"군사/안보 근접도",tier:"TIER1",state:1.0,confirmed:true,src:"UAE MoD, Al Jazeera, CNN, BBC",ts:"Mar 3 12:00",detail:"3일 연속 이란 공격. 미사일 165발 + 드론 541기. 3사망 58부상.",srcCount:6,cv:true},
+{id:"I04",name:"치안/도로 통제",tier:"TIER1",state:0.60,confirmed:false,src:"Time Out, US Embassy, Canada",ts:"Mar 3 10:00",detail:"파편 지역 도로 폐쇄. 공식 통금 미확인. SMS 공습경보 운영.",srcCount:3,cv:false},
+{id:"I05",name:"통신/인터넷",tier:"TIER1",state:0.15,confirmed:true,src:"CNBC, 직접 확인",ts:"Mar 3 08:00",detail:"일반 통신 정상. AWS UAE DC 2곳 오프라인.",srcCount:2,cv:true},
+{id:"I06",name:"필수재/연료",tier:"TIER2",state:0.35,confirmed:true,src:"The National, Khaleej Times, Gulf News",ts:"Mar 2 20:00",detail:"패닉바잉 진정. 연료 정상 (E-Plus 91: AED 2.40/L).",srcCount:4,cv:true},
+{id:"I07",name:"외국정부 행동",tier:"TIER0",state:1.0,confirmed:true,src:"태국 총리, 인도 항공, UK/AU FCDO",ts:"Mar 3 10:30",detail:"태국 군용기 대피, 인도 10편, UK/AU DNT + 대피 계획.",srcCount:5,cv:true},
+];
+
+const HYPOTHESES=[
+{id:"H0",name:"정상",score:0.215,color:"#22c55e"},
+{id:"H1",name:"악화",score:0.608,color:"#f59e0b"},
+{id:"H2",name:"철수준비",score:0.798,color:"#ef4444"},
+];
+
+const ROUTES=[
+{id:"A",name:"Al Ain → Buraimi → Sohar",base_h:7.0,status:"OPEN",cong:0.35,note:"국경 OPEN 확인 (Canada Advisory)"},
+{id:"B",name:"Mezyad → Nizwa",base_h:8.2,status:"OPEN",cong:0.25,note:"국경 OPEN. 혼잡도 불확실."},
+{id:"C",name:"Saudi Ghuwaifat → Riyadh",base_h:15.5,status:"CAUTION",cong:0.55,note:"사우디 국경 OPEN이나 이란 대상국. 미 대사관 리야드 드론 피격."},
+{id:"D",name:"Fujairah → Khatmat → Muscat",base_h:9.3,status:"OPEN",cong:0.20,note:"오만 동해안 경유. 이란 공습 직접 경로 회피 가능."},
+];
+
+const CL_INIT=[
+{id:1,text:"Bug-out bag (여권/ID/현금USD+AED/물2L/비상식량)",done:false},
+{id:2,text:"차량 연료 Full 확인",done:false},
+{id:3,text:"오만 보험 Orange Card 사전 구매",done:false},
+{id:4,text:"대사관 긴급번호 저장 — KR: +971-2-643-8700",done:false},
+{id:5,text:"Al Ain/Buraimi 루트 GPS 오프라인 맵",done:false},
+{id:6,text:"가족/회사(SCT) 비상연락 완료",done:false},
+{id:7,text:"15분마다 대사관/Etihad/BBC 확인",done:false},
+{id:8,text:"SMS 공습경보 수신 확인",done:false},
+{id:9,text:"창문 회피 안전구역(내벽) 확보",done:false},
+{id:10,text:"NetherlandsWorldwide 정보서비스 등록",done:false},
+];
+
+const pC={CRITICAL:"#ef4444",HIGH:"#f59e0b",MEDIUM:"#3b82f6"};
+
+function Pulse({color}){
+  const[o,sO]=useState(1);
+  useEffect(()=>{const i=setInterval(()=>sO(v=>v===1?0.3:1),800);return()=>clearInterval(i)},[]);
+  return <span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",backgroundColor:color,opacity:o,transition:"opacity 0.4s"}}/>;
+}
+
+function Bar({value,max=1,color,h=8}){
+  return <div style={{width:"100%",height:h,background:"#1e293b",borderRadius:h/2,overflow:"hidden"}}>
+    <div style={{width:`${Math.min(value/max*100,100)}%`,height:"100%",background:color,borderRadius:h/2,transition:"width 0.6s"}}/>
+  </div>;
+}
+
+function Gauge({value,color,label,sub}){
+  const p=Math.min(value,1),a=p*180,r=35,cx=45,cy=50;
+  const rad=d=>(d*Math.PI)/180;
+  const ea=180-a,x2=cx+r*Math.cos(rad(ea)),y2=cy-r*Math.sin(rad(ea));
+  return <div style={{textAlign:"center"}}>
+    <svg width={90} height={65} viewBox="0 0 90 65">
+      <path d={`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke="#1e293b" strokeWidth={5} strokeLinecap="round"/>
+      {p>0&&<path d={`M ${cx-r} ${cy} A ${r} ${r} 0 ${a>180?1:0} 1 ${x2} ${y2}`} fill="none" stroke={color} strokeWidth={5} strokeLinecap="round"/>}
+      <text x={cx} y={cy-8} textAnchor="middle" fill={color} fontSize={16} fontWeight={800} fontFamily="monospace">{value.toFixed(3)}</text>
+      <text x={cx} y={cy+6} textAnchor="middle" fill="#94a3b8" fontSize={9}>{label}</text>
+    </svg>
+    {sub&&<div style={{fontSize:10,color:"#64748b",marginTop:-4}}>{sub}</div>}
+  </div>;
+}
+
+function App(){
+  const[now,sN]=useState(new Date());
+  const[cl,sCl]=useState(CL_INIT);
+  const[tab,sT]=useState("overview");
+  const[ne,sNe]=useState(900);
+  const[ff,sFF]=useState("ALL");
+
+  useEffect(()=>{const t=setInterval(()=>{sN(new Date());sNe(p=>p<=0?900:p-1)},1000);return()=>clearInterval(t)},[]);
+  const tog=useCallback(id=>sCl(p=>p.map(c=>c.id===id?{...c,done:!c.done}:c)),[]);
+  const cc=cl.filter(c=>c.done).length;
+  const ds=HYPOTHESES[2].score-HYPOTHESES[1].score;
+  const ec=0.78;
+  const bf=2.0;
+  const fmt=s=>`${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
+  const fFeed=ff==="ALL"?INTEL_FEED:INTEL_FEED.filter(f=>f.priority===ff);
+  const tabs=[{id:"overview",l:"Overview",i:"📊"},{id:"intel",l:"Intel Feed",i:"🔴"},{id:"indicators",l:"Indicators",i:"📡"},{id:"routes",l:"Routes",i:"🛣️"},{id:"checklist",l:"Checklist",i:"✅"}];
+
+  return <div style={{minHeight:"100vh",background:"#020617",color:"#e2e8f0",fontFamily:"'Inter',-apple-system,sans-serif",padding:12,maxWidth:920,margin:"0 auto"}}>
+    {/* HEADER */}
+    <div style={{background:"linear-gradient(135deg,#0f172a,#1e1b4b)",borderRadius:16,padding:"16px 20px",marginBottom:12,border:"1px solid #1e293b"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:10,color:"#64748b",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>HyIE-ERC² Personal I&W System · LIVE INTELLIGENCE</div>
+          <div style={{fontSize:22,fontWeight:800,background:"linear-gradient(90deg,#f59e0b,#fbbf24)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>v2026.05 — SHELTER MODE</div>
+          <div style={{fontSize:10,color:"#94a3b8",marginTop:4}}>Iran-UAE Conflict Day 4 · Feb 28 – ongoing · 실시간 검증 데이터</div>
+        </div>
+        <div style={{textAlign:"right"}}>
+          <div style={{fontSize:11,color:"#64748b"}}>Abu Dhabi, UAE (GST +4)</div>
+          <div style={{fontSize:13,fontFamily:"monospace",color:"#94a3b8"}}>{now.toISOString().slice(0,10)} {now.toTimeString().slice(0,8)}</div>
+          <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginTop:4}}>
+            <Pulse color="#f59e0b"/>
+            <span style={{fontSize:11,color:"#f59e0b"}}>다음 평가: {fmt(ne)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* ALERT BANNER */}
+    <div style={{background:"rgba(245,158,11,0.08)",border:"2px solid #f59e0b",borderRadius:12,padding:"14px 20px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{width:48,height:48,borderRadius:12,background:"linear-gradient(135deg,#f59e0b,#d97706)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:"#000"}}>⚠</div>
+        <div>
+          <div style={{fontSize:20,fontWeight:800,color:"#f59e0b"}}>AMBER → RED_PREP 접근 중</div>
+          <div style={{fontSize:12,color:"#fbbf24"}}>MODE: SHELTER · 이동 제한 · Gate BLOCKED</div>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {[{l:"Gate",v:"BLOCKED",c:"#ef4444"},{l:"Evidence",v:"PASSED",c:"#22c55e"},{l:"Airspace",v:"CLOSED→3/5",c:"#ef4444"},{l:"ΔScore",v:ds.toFixed(3),c:ds>=0.15?"#f59e0b":"#64748b"}].map((b,i)=>
+          <div key={i} style={{background:"#1e293b",borderRadius:8,padding:"5px 10px",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#64748b"}}>{b.l}</div>
+            <div style={{fontSize:12,fontWeight:700,color:b.c}}>{b.v}</div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* CONFLICT STATS */}
+    <div style={{background:"rgba(239,68,68,0.06)",border:"1px solid #7f1d1d",borderRadius:10,padding:"10px 16px",marginBottom:12,fontSize:11,color:"#fca5a5",display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center"}}>
+      <span>Missiles: <b>165</b> (152 int.)</span><span>Drones: <b>541</b> (506 dest.)</span><span>Casualties: <b>3 KIA / 58 WIA</b></span><span>Duration: <b>Day 4</b></span><span>Sources: <b>12+ verified</b></span>
+    </div>
+
+    {/* TABS */}
+    <div style={{display:"flex",gap:4,marginBottom:12,overflowX:"auto",paddingBottom:4}}>
+      {tabs.map(t=><button key={t.id} onClick={()=>sT(t.id)} style={{background:tab===t.id?"#1e293b":"transparent",border:tab===t.id?"1px solid #334155":"1px solid transparent",borderRadius:8,padding:"8px 14px",color:tab===t.id?"#e2e8f0":"#64748b",fontSize:12,fontWeight:tab===t.id?700:500,cursor:"pointer",whiteSpace:"nowrap"}}>{t.i} {t.l}</button>)}
+    </div>
+
+    {/* OVERVIEW */}
+    {tab==="overview"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
+      {/* Hypotheses */}
+      <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,padding:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12,letterSpacing:1}}>🧠 HYPOTHESIS SCORES (HyIE)</div>
+        <div style={{display:"flex",justifyContent:"space-around",marginBottom:12}}>
+          {HYPOTHESES.map(h=><Gauge key={h.id} value={h.score} color={h.color} label={h.id} sub={h.name}/>)}
+        </div>
+        <div style={{background:"#1e293b",borderRadius:8,padding:10,fontSize:11}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:"#94a3b8"}}>Leading:</span><span style={{color:"#ef4444",fontWeight:700}}>H2 철수준비 (0.798)</span></div>
+          <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"#94a3b8"}}>ΔScore:</span><span style={{color:"#f59e0b",fontWeight:700}}>{ds.toFixed(3)} (threshold: 0.20)</span></div>
+          <div style={{fontSize:10,color:"#fbbf24",marginTop:6,padding:"4px 8px",background:"rgba(245,158,11,0.1)",borderRadius:4}}>⚠ 0.20까지 0.01 차이. 추가 에스컬레이션 시 RED_PREP 전환.</div>
+        </div>
+      </div>
+
+      {/* ICD 203 */}
+      <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,padding:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12,letterSpacing:1}}>🔬 ICD 203 — CONFIDENCE / URGENCY</div>
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:11,color:"#94a3b8"}}>Evidence Confidence</span><span style={{fontSize:13,fontWeight:700,color:"#f59e0b"}}>MEDIUM-HIGH (0.78)</span></div>
+          <Bar value={ec} color="#f59e0b" h={10}/>
+          <div style={{fontSize:10,color:"#64748b",marginTop:4}}>12+ 독립 출처 · TIER0 3건 확인 · I04 부분</div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:11,color:"#94a3b8"}}>Urgency</span><span style={{fontSize:13,fontWeight:700,color:"#64748b"}}>산출 불가</span></div>
+          <Bar value={0} color="#64748b" h={10}/>
+          <div style={{fontSize:10,color:"#ef4444",marginTop:4}}>EgressLossETA 미입력 → buffer 2.00</div>
+        </div>
+        <div style={{background:"#1e293b",borderRadius:8,padding:10}}>
+          <div style={{fontSize:10,color:"#94a3b8",marginBottom:4}}>Effective RED Threshold</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:6}}><span style={{fontSize:20,fontWeight:800,color:"#e2e8f0",fontFamily:"monospace"}}>0.80</span><span style={{fontSize:10,color:"#64748b"}}>(urgency discount 미적용)</span></div>
+          <div style={{fontSize:10,color:"#f59e0b",marginTop:4}}>Conf 0.78 &lt; 0.80 → RED 미충족 (0.02 차이)</div>
+        </div>
+      </div>
+
+      {/* Movement Gate */}
+      <div style={{background:"#0f172a",border:"1px solid #ef4444",borderRadius:12,padding:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12,letterSpacing:1}}>🚧 MOVEMENT RISK GATE</div>
+        {[{l:"Stay Indoors",a:true,s:"NL/US/UK 실내 대기 권고"},{l:"Active Strike Window",a:true,s:"이란 3일 연속 공격 · 영공 폐쇄"},{l:"Curfew/Roadblock",a:false,s:"통금 미발령 · 파편 지역만 폐쇄"}].map((g,i)=>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,background:g.a?"rgba(239,68,68,0.08)":"rgba(34,197,94,0.05)",border:`1px solid ${g.a?"#7f1d1d":"#14532d"}`,borderRadius:8,padding:"8px 12px"}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:g.a?"#ef4444":"#22c55e",boxShadow:g.a?"0 0 8px #ef4444":"none"}}/>
+            <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:g.a?"#fca5a5":"#86efac"}}>{g.l}</div><div style={{fontSize:9,color:"#64748b"}}>{g.s}</div></div>
+            <span style={{fontSize:11,fontWeight:700,color:g.a?"#ef4444":"#22c55e"}}>{g.a?"ACTIVE":"CLEAR"}</span>
+          </div>
+        )}
+        <div style={{background:"#1e293b",borderRadius:8,padding:10,fontSize:11}}>
+          <div style={{color:"#ef4444",fontWeight:700,marginBottom:4}}>GATE BLOCKED (2/3)</div>
+          <div style={{color:"#94a3b8"}}>RED_MOVE 차단 · RED_PREP만 허용</div>
+        </div>
+      </div>
+
+      {/* Likelihood */}
+      <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,padding:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12,letterSpacing:1}}>📈 가능성 (LIKELIHOOD)</div>
+        <div style={{textAlign:"center",padding:"8px 0 12px"}}><div style={{fontSize:28,fontWeight:800,color:"#f59e0b"}}>LIKELY</div><div style={{fontSize:13,color:"#94a3b8"}}>55–80%</div></div>
+        <div style={{background:"#1e293b",borderRadius:8,padding:12,fontSize:12,color:"#cbd5e1",lineHeight:1.6}}>"아부다비 거주자가 72시간 내 대피 준비가 필요할 가능성이 높다."</div>
+        <div style={{background:"rgba(245,158,11,0.08)",borderRadius:8,padding:10,marginTop:8,fontSize:11,color:"#fbbf24"}}>근거: US Ordered Departure + UK/AU DNT + 이란 3일 연속 공격</div>
+      </div>
+
+      {/* Escalation */}
+      <div style={{background:"#0f172a",border:"1px solid #ef4444",borderRadius:12,padding:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🔺 RED 전환 지표</div>
+        {["한국 대사관 'Leave immediately'","미국 Level 4 Do Not Travel 격상","Al Ain 국경 혼잡도 RESTRICTED↑","ΔScore ≥ 0.20 돌파 (현재 0.01 차이)","이란 추가 대규모 보복"].map((t,i)=>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:11,marginBottom:5}}><span style={{color:"#ef4444"}}>▲</span><span style={{color:"#fca5a5"}}>{t}</span></div>
+        )}
+      </div>
+
+      {/* De-escalation */}
+      <div style={{background:"#0f172a",border:"1px solid #22c55e",borderRadius:12,padding:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🔽 GREEN 전환 지표</div>
+        {["영공 재개 + Etihad 상업 운항 재개","Stay-indoors 해제 + strike 종료","이란-미국 휴전/협상 개시","주요 정부 'situation stabilizing'"].map((t,i)=>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:11,marginBottom:5}}><span style={{color:"#22c55e"}}>▼</span><span style={{color:"#86efac"}}>{t}</span></div>
+        )}
+      </div>
+    </div>}
+
+    {/* INTEL FEED */}
+    {tab==="intel"&&<div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {["ALL","CRITICAL","HIGH","MEDIUM"].map(f=><button key={f} onClick={()=>sFF(f)} style={{background:ff===f?(pC[f]||"#334155"):"transparent",border:`1px solid ${ff===f?(pC[f]||"#334155"):"#1e293b"}`,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,color:ff===f?"#fff":"#64748b",cursor:"pointer"}}>{f} {f!=="ALL"&&`(${INTEL_FEED.filter(i=>i.priority===f).length})`}</button>)}
+      </div>
+      {fFeed.map((item,i)=>
+        <div key={i} style={{background:"#0f172a",border:`1px solid ${item.priority==="CRITICAL"?"#7f1d1d":"#1e293b"}`,borderLeft:`3px solid ${pC[item.priority]}`,borderRadius:8,padding:"10px 14px",marginBottom:6}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,fontWeight:700,background:`${pC[item.priority]}20`,color:pC[item.priority]}}>{item.priority}</span>
+              <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{item.ts} GST</span>
+            </div>
+            {item.verified&&<span style={{fontSize:9,color:"#22c55e"}}>✓ verified</span>}
+          </div>
+          <div style={{fontSize:12,color:"#e2e8f0",fontWeight:600,marginBottom:4}}>{item.text}</div>
+          <div style={{fontSize:10,color:"#64748b",marginBottom:2}}>출처: {item.src}</div>
+          <div style={{fontSize:10,color:"#94a3b8",fontStyle:"italic"}}>영향: {item.impact}</div>
+        </div>
+      )}
+    </div>}
+
+    {/* INDICATORS */}
+    {tab==="indicators"&&<div>
+      {INDICATORS.map(ind=>
+        <div key={ind.id} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:10,padding:"12px 16px",marginBottom:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+            <div style={{minWidth:40,textAlign:"center",fontSize:12,fontWeight:800,fontFamily:"monospace",color:ind.state>=0.8?"#ef4444":ind.state>=0.4?"#f59e0b":"#22c55e"}}>{ind.id}</div>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{ind.name}</span>
+                <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,fontWeight:700,background:ind.tier==="TIER0"?"rgba(239,68,68,0.15)":ind.tier==="TIER1"?"rgba(245,158,11,0.15)":"rgba(100,116,139,0.15)",color:ind.tier==="TIER0"?"#fca5a5":ind.tier==="TIER1"?"#fcd34d":"#94a3b8"}}>{ind.tier}</span>
+                <span style={{fontSize:12,fontWeight:800,fontFamily:"monospace",color:ind.state>=0.8?"#ef4444":ind.state>=0.4?"#f59e0b":"#22c55e"}}>{ind.state.toFixed(2)}</span>
+              </div>
+            </div>
+            <span style={{fontSize:10,color:ind.cv?"#22c55e":"#f59e0b"}}>{ind.cv?"✓ 교차검증":"△ 부분"}</span>
+          </div>
+          <Bar value={ind.state} color={ind.state>=0.8?"#ef4444":ind.state>=0.4?"#f59e0b":"#22c55e"} h={6}/>
+          <div style={{fontSize:11,color:"#cbd5e1",marginTop:6}}>{ind.detail}</div>
+          <div style={{fontSize:10,color:"#64748b",marginTop:4}}>출처: {ind.src} · 최신: {ind.ts} · 소스 {ind.srcCount}건</div>
+        </div>
+      )}
+      <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:10,padding:14,marginTop:4}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#22c55e"}}>✅ Evidence Floor PASSED — TIER0 confirmed: 3건 (I01, I02, I07)</div>
+      </div>
+    </div>}
+
+    {/* ROUTES */}
+    {tab==="routes"&&<div>
+      {ROUTES.map(r=>{
+        const eff=r.base_h*(1+r.cong)*bf;
+        return <div key={r.id} style={{background:"#0f172a",border:`1px solid ${r.status==="CAUTION"?"#92400e":"#1e293b"}`,borderRadius:10,padding:16,marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",background:r.status==="CAUTION"?"#92400e":"#14532d",fontSize:13,fontWeight:800,color:"#fff"}}>{r.id}</span>
+              <div><div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{r.name}</div><div style={{fontSize:10,color:r.status==="CAUTION"?"#f59e0b":"#22c55e"}}>{r.status}</div></div>
+            </div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:18,fontWeight:800,fontFamily:"monospace",color:"#e2e8f0"}}>{eff.toFixed(1)}h</div><div style={{fontSize:10,color:"#64748b"}}>effective lead</div></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+            <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Base</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:"#94a3b8"}}>{r.base_h}h</div></div>
+            <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Congestion</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:r.cong>0.3?"#f59e0b":"#94a3b8"}}>x{(1+r.cong).toFixed(2)}</div></div>
+            <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Buffer</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:"#f59e0b"}}>x{bf.toFixed(1)}</div></div>
+          </div>
+          <div style={{fontSize:10,color:"#94a3b8",background:"#0d1117",borderRadius:6,padding:8}}>{r.note}</div>
+        </div>
+      })}
+    </div>}
+
+    {/* CHECKLIST */}
+    {tab==="checklist"&&<div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}><div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>SHELTER 모드 — 즉시 준비</div><div style={{fontSize:12,color:cc===cl.length?"#22c55e":"#f59e0b"}}>{cc}/{cl.length}</div></div>
+      <Bar value={cc} max={cl.length} color={cc===cl.length?"#22c55e":"#f59e0b"} h={6}/>
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:12}}>
+        {cl.map(c=><div key={c.id} onClick={()=>tog(c.id)} style={{display:"flex",alignItems:"center",gap:12,background:c.done?"rgba(34,197,94,0.05)":"#0f172a",border:`1px solid ${c.done?"#14532d":"#1e293b"}`,borderRadius:8,padding:"10px 14px",cursor:"pointer"}}>
+          <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${c.done?"#22c55e":"#334155"}`,display:"flex",alignItems:"center",justifyContent:"center",background:c.done?"#22c55e":"transparent"}}>{c.done&&<span style={{color:"#000",fontSize:12,fontWeight:800}}>✓</span>}</div>
+          <span style={{fontSize:13,color:c.done?"#86efac":"#e2e8f0",textDecoration:c.done?"line-through":"none",opacity:c.done?0.7:1}}>{c.text}</span>
+        </div>)}
+      </div>
+    </div>}
+
+    {/* FOOTER */}
+    <div style={{marginTop:16,padding:"10px 16px",background:"#0f172a",borderRadius:10,border:"1px solid #1e293b",fontSize:10,color:"#475569"}}>
+      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
+        <span>HyIE-ERC² v2026.05 · ICD 203 · Samsung C&T Logistics</span>
+        <span>경보 시점 = 출구 상실 시점 − (대피 소요 × 버퍼)</span>
+      </div>
+      <div style={{marginTop:6,color:"#334155",fontSize:9}}>Sources: Al Jazeera, CNN, BBC, CNBC, Reuters, Euronews, Khaleej Times, The National, Gulf News, US State Dept, NL Gov, UAE MoD</div>
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
