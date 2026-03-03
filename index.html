@@ -17,7 +17,7 @@ body{background:#020617;font-family:'Inter',-apple-system,system-ui,sans-serif}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState,useEffect,useCallback}=React;
+const {useState,useEffect,useCallback,useRef}=React;
 
 const INTEL_FEED=[
 {ts:"Mar 3 14:00",priority:"CRITICAL",verified:true,text:"Emirates & Etihad 모든 상업 운항 3월 5일 14:00까지 중단 연장",src:"LoyaltyLobby / Etihad 공식",impact:"I02 = 1.00 유지. 제한적 본국송환 편만 허용."},
@@ -70,6 +70,99 @@ const CL_INIT=[
 {id:10,text:"NetherlandsWorldwide 정보서비스 등록",done:false},
 ];
 
+const FALLBACK_DASHBOARD={
+  intelFeed:INTEL_FEED,
+  indicators:INDICATORS,
+  hypotheses:HYPOTHESES,
+  routes:ROUTES,
+  checklist:CL_INIT,
+  metadata:{egressLossETA:2},
+};
+const INITIAL_DASHBOARD=normalizeDashboard(FALLBACK_DASHBOARD)||FALLBACK_DASHBOARD;
+
+const MIN_EVIDENCE_SOURCES=2;
+const FALLBACK_EGRESS_LOSS_ETA=2;
+
+function toTsIso(value){
+  if(!value) return "";
+  const text=String(value || "").trim();
+  const m=text.match(/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2})(?::(\d{2}))?$/i);
+  const monthMap={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  const d = m && monthMap[m[1].toLowerCase()] !== undefined
+    ? new Date(new Date().getFullYear(), monthMap[m[1].toLowerCase()], Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5] || "0"), 0)
+    : new Date(text);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
+function splitSources(raw=""){
+  return [...new Set(
+    raw
+      .split(/\/|,/)
+      .map((s)=>s.trim())
+      .filter(Boolean)
+      .map((s)=>s.replace(/\s+\(.*?\)$/,"").trim())
+      .filter(Boolean)
+  )];
+}
+
+function inferEvidenceFromSource(raw){
+  const sources=splitSources(raw);
+  const sourceCount=Math.max(sources.length,0);
+  return {sourceCount,verified:sourceCount>=MIN_EVIDENCE_SOURCES};
+}
+
+function normalizeIntelFeedItem(raw={}) {
+  const tsIso = toTsIso(raw.tsIso || raw.ts);
+  const evidence = inferEvidenceFromSource(raw.src || "");
+  const sourceCount = Number.isFinite(raw.sourceCount) && raw.sourceCount > 0 ? raw.sourceCount : evidence.sourceCount;
+  return {
+    ...raw,
+    tsIso,
+    ts: tsIso ? tsIso.slice(0,16).replace("T"," ") : raw.ts || "",
+    text: String(raw.text || "").trim(),
+    src: String(raw.src || ""),
+    verified: evidence.verified,
+    sourceCount: Math.max(sourceCount || 0, 0),
+  };
+}
+
+function normalizeIndicatorItem(raw={}) {
+  const tsIso = toTsIso(raw.tsIso || raw.ts);
+  const evidence = inferEvidenceFromSource(raw.src || "");
+  const srcCount = Number.isFinite(raw.srcCount) && raw.srcCount > 0 ? raw.srcCount : evidence.sourceCount;
+  return {
+    ...raw,
+    tsIso,
+    ts: tsIso ? tsIso.slice(0,16).replace("T"," ") : raw.ts || "",
+    srcCount: Math.max(srcCount, 0),
+    cv: srcCount >= MIN_EVIDENCE_SOURCES,
+    verified: srcCount >= MIN_EVIDENCE_SOURCES,
+  };
+}
+
+function normalizeMetadata(raw={}) {
+  const n = Number(raw.egressLossETA);
+  return { egressLossETA: Number.isFinite(n) && n >= 0 ? n : FALLBACK_EGRESS_LOSS_ETA };
+}
+
+function normalizeDashboard(payload){
+  if(!payload||typeof payload!=="object") return null;
+  const {intelFeed,indicators,hypotheses,routes,checklist}=payload;
+  if(!Array.isArray(intelFeed)||!Array.isArray(indicators)||!Array.isArray(hypotheses)||!Array.isArray(routes)||!Array.isArray(checklist)) return null;
+  return {
+    intelFeed:intelFeed.map(normalizeIntelFeedItem),
+    indicators:indicators.map(normalizeIndicatorItem),
+    hypotheses,
+    routes,
+    checklist,
+    metadata: normalizeMetadata(payload.metadata || {}),
+  };
+}
+function clampEgress(value){
+  const n=Number(value);
+  return Number.isFinite(n)&&n>=0?n:FALLBACK_EGRESS_LOSS_ETA;
+}
+
 const pC={CRITICAL:"#ef4444",HIGH:"#f59e0b",MEDIUM:"#3b82f6"};
 
 function Pulse({color}){
@@ -105,16 +198,104 @@ function App(){
   const[tab,sT]=useState("overview");
   const[ne,sNe]=useState(900);
   const[ff,sFF]=useState("ALL");
+  const[dash,sDash]=useState(INITIAL_DASHBOARD);
+  const[egressLossETA,sELA]=useState(INITIAL_DASHBOARD?.metadata?.egressLossETA ?? FALLBACK_EGRESS_LOSS_ETA);
+  const[loading,sLoading]=useState(true);
+  const[error,sError]=useState(null);
+  const[lastUpdated,sLastUpdated]=useState(null);
+  const mounted=useRef(true);
+  const synced=useRef(false);
 
-  useEffect(()=>{const t=setInterval(()=>{sN(new Date());sNe(p=>p<=0?900:p-1)},1000);return()=>clearInterval(t)},[]);
+  const mergeChecklist=(payloadChecklist,prevChecklist)=>{
+    return payloadChecklist.map(item=>{
+      const prev=prevChecklist.find(p=>p.id===item.id);
+      return prev?{...item,done:prev.done}:item;
+    });
+  };
+
+  const applyDashboard=useCallback((next)=>{
+    sDash(next);
+    sCl(prev=>mergeChecklist(next.checklist,prev));
+    sELA(clampEgress(next?.metadata?.egressLossETA));
+    synced.current=true;
+  },[]);
+
+  const fetchDashboard=useCallback(async(showLoading=false)=>{
+    if(showLoading) sLoading(true);
+    try{
+      const r=await fetch("./data/dashboard.json",{cache:"no-store"});
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const payload=await r.json();
+      const normalized=normalizeDashboard(payload);
+      if(!normalized) throw new Error("Invalid payload");
+      if(!mounted.current) return;
+      applyDashboard(normalized);
+      if(Number.isFinite(normalized?.metadata?.egressLossETA)){
+        sELA(normalized.metadata.egressLossETA);
+      }
+      sError(null);
+      sLastUpdated(new Date());
+    }catch(err){
+      if(!mounted.current) return;
+      if(!synced.current){
+        applyDashboard(INITIAL_DASHBOARD);
+      }
+      sError("데이터를 불러오지 못했습니다. 기본 데이터를 표시합니다.");
+    }finally{
+      if(showLoading && mounted.current) sLoading(false);
+    }
+  },[applyDashboard]);
+
+  useEffect(()=>{
+    if(typeof window === "undefined") return;
+    const v=Number(window.localStorage.getItem("urgentdash.egressLossETA"));
+    if(Number.isFinite(v) && v>=0){
+      sELA(v);
+    }
+  },[]);
+
+  useEffect(()=>{
+    if(typeof window === "undefined") return;
+    window.localStorage.setItem("urgentdash.egressLossETA", String(Number.isFinite(egressLossETA)?egressLossETA:FALLBACK_EGRESS_LOSS_ETA));
+  },[egressLossETA]);
+
+  useEffect(()=>{
+    const t=setInterval(()=>{sN(new Date());sNe(p=>p<=0?900:p-1)},1000);
+    return()=>{
+      mounted.current=false;
+      clearInterval(t);
+    };
+  },[]);
+
+  useEffect(()=>{
+    mounted.current=true;
+    fetchDashboard(true);
+    const intervalMs=15*60*1000;
+    const id=setInterval(()=>fetchDashboard(false),intervalMs);
+    return ()=>clearInterval(id);
+  },[fetchDashboard]);
+
   const tog=useCallback(id=>sCl(p=>p.map(c=>c.id===id?{...c,done:!c.done}:c)),[]);
   const cc=cl.filter(c=>c.done).length;
-  const ds=HYPOTHESES[2].score-HYPOTHESES[1].score;
+  const evidenceFloorT0 = dash.indicators.filter(i=>i.tier==="TIER0"&&i.cv).length;
+  const ds=(dash.hypotheses[2]?.score||0)-(dash.hypotheses[1]?.score||0);
   const ec=0.78;
+  const egress=Number.isFinite(egressLossETA)?egressLossETA:FALLBACK_EGRESS_LOSS_ETA;
+  const urgencyScore=Math.min(1,Math.max(0,1 - egress / 12));
+  const safeEgressLabel=Number.isFinite(egress)?`${egress.toFixed(2)}h`:"미입력";
   const bf=2.0;
   const fmt=s=>`${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
-  const fFeed=ff==="ALL"?INTEL_FEED:INTEL_FEED.filter(f=>f.priority===ff);
+  const fFeed=ff==="ALL"?dash.intelFeed:dash.intelFeed.filter(f=>f.priority===ff);
   const tabs=[{id:"overview",l:"Overview",i:"📊"},{id:"intel",l:"Intel Feed",i:"🔴"},{id:"indicators",l:"Indicators",i:"📡"},{id:"routes",l:"Routes",i:"🛣️"},{id:"checklist",l:"Checklist",i:"✅"}];
+  const updateTs=lastUpdated
+    ? lastUpdated.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit",hour12:false})
+    : "—";
+  const formatFeedTs=(item)=>{
+    const raw=item?.tsIso || item?.ts;
+    const d=raw?new Date(raw):null;
+    if(!d||Number.isNaN(d.getTime())) return item?.ts || "—";
+    return d.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Dubai"});
+  };
 
   return <div style={{minHeight:"100vh",background:"#020617",color:"#e2e8f0",fontFamily:"'Inter',-apple-system,sans-serif",padding:12,maxWidth:920,margin:"0 auto"}}>
     {/* HEADER */}
@@ -128,6 +309,9 @@ function App(){
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:11,color:"#64748b"}}>Abu Dhabi, UAE (GST +4)</div>
           <div style={{fontSize:13,fontFamily:"monospace",color:"#94a3b8"}}>{now.toISOString().slice(0,10)} {now.toTimeString().slice(0,8)}</div>
+          <div style={{fontSize:11,color:"#64748b",marginTop:2}}>마지막 갱신: {updateTs}</div>
+          {loading&&<div style={{fontSize:11,color:"#22c55e",marginTop:2}}>데이터 로드 중…</div>}
+          {error&&<div style={{fontSize:11,color:"#fca5a5",marginTop:2}}>{error}</div>}
           <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginTop:4}}>
             <Pulse color="#f59e0b"/>
             <span style={{fontSize:11,color:"#f59e0b"}}>다음 평가: {fmt(ne)}</span>
@@ -171,7 +355,7 @@ function App(){
       <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,padding:16}}>
         <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12,letterSpacing:1}}>🧠 HYPOTHESIS SCORES (HyIE)</div>
         <div style={{display:"flex",justifyContent:"space-around",marginBottom:12}}>
-          {HYPOTHESES.map(h=><Gauge key={h.id} value={h.score} color={h.color} label={h.id} sub={h.name}/>)}
+          {dash.hypotheses.map(h=><Gauge key={h.id} value={h.score} color={h.color} label={h.id} sub={h.name}/>)}
         </div>
         <div style={{background:"#1e293b",borderRadius:8,padding:10,fontSize:11}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:"#94a3b8"}}>Leading:</span><span style={{color:"#ef4444",fontWeight:700}}>H2 철수준비 (0.798)</span></div>
@@ -189,9 +373,29 @@ function App(){
           <div style={{fontSize:10,color:"#64748b",marginTop:4}}>12+ 독립 출처 · TIER0 3건 확인 · I04 부분</div>
         </div>
         <div style={{marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:11,color:"#94a3b8"}}>Urgency</span><span style={{fontSize:13,fontWeight:700,color:"#64748b"}}>산출 불가</span></div>
-          <Bar value={0} color="#64748b" h={10}/>
-          <div style={{fontSize:10,color:"#ef4444",marginTop:4}}>EgressLossETA 미입력 → buffer 2.00</div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:11,color:"#94a3b8"}}>Urgency</span><span style={{fontSize:13,fontWeight:700,color:"#64748b"}}>{urgencyScore.toFixed(2)}</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <span style={{fontSize:10,color:"#64748b"}}>EgressLossETA</span>
+            <span style={{fontSize:11,fontFamily:"monospace",color:"#f59e0b"}}>{safeEgressLabel}</span>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,justifyContent:"space-between"}}>
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              value={egressLossETA}
+              onChange={(e)=>{
+                const n=Number(e.target.value);
+                if(Number.isFinite(n)&&n>=0) sELA(n);
+              }}
+              style={{width:100,padding:"4px 6px",borderRadius:6,border:"1px solid #334155",background:"#0f172a",color:"#e2e8f0"}}
+            />
+            <span style={{fontSize:9,color:"#64748b"}}>입력값이 경보 계산에 반영됩니다.</span>
+          </div>
+          <Bar value={urgencyScore} color={urgencyScore>=0.5?"#22c55e":"#f59e0b"} h={10}/>
+          <div style={{fontSize:10,color:urgencyScore>=0.5?"#22c55e":"#ef4444",marginTop:4}}>
+            {urgencyScore>=0.5 ? "경보 위험도 상승 구간 충족" : "현재 위험도 낮음(입력값 기반)"} 
+          </div>
         </div>
         <div style={{background:"#1e293b",borderRadius:8,padding:10}}>
           <div style={{fontSize:10,color:"#94a3b8",marginBottom:4}}>Effective RED Threshold</div>
@@ -244,15 +448,15 @@ function App(){
     {/* INTEL FEED */}
     {tab==="intel"&&<div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {["ALL","CRITICAL","HIGH","MEDIUM"].map(f=><button key={f} onClick={()=>sFF(f)} style={{background:ff===f?(pC[f]||"#334155"):"transparent",border:`1px solid ${ff===f?(pC[f]||"#334155"):"#1e293b"}`,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,color:ff===f?"#fff":"#64748b",cursor:"pointer"}}>{f} {f!=="ALL"&&`(${INTEL_FEED.filter(i=>i.priority===f).length})`}</button>)}
+        {["ALL","CRITICAL","HIGH","MEDIUM"].map(f=><button key={f} onClick={()=>sFF(f)} style={{background:ff===f?(pC[f]||"#334155"):"transparent",border:`1px solid ${ff===f?(pC[f]||"#334155"):"#1e293b"}`,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,color:ff===f?"#fff":"#64748b",cursor:"pointer"}}>{f} {f!=="ALL"&&`(${dash.intelFeed.filter(i=>i.priority===f).length})`}</button>)}
       </div>
       {fFeed.map((item,i)=>
         <div key={i} style={{background:"#0f172a",border:`1px solid ${item.priority==="CRITICAL"?"#7f1d1d":"#1e293b"}`,borderLeft:`3px solid ${pC[item.priority]}`,borderRadius:8,padding:"10px 14px",marginBottom:6}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,fontWeight:700,background:`${pC[item.priority]}20`,color:pC[item.priority]}}>{item.priority}</span>
-              <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{item.ts} GST</span>
-            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:9,padding:"1px 6px",borderRadius:4,fontWeight:700,background:`${pC[item.priority]}20`,color:pC[item.priority]}}>{item.priority}</span>
+                <span style={{fontSize:10,color:"#64748b",fontFamily:"monospace"}}>{formatFeedTs(item)} GST</span>
+              </div>
             {item.verified&&<span style={{fontSize:9,color:"#22c55e"}}>✓ verified</span>}
           </div>
           <div style={{fontSize:12,color:"#e2e8f0",fontWeight:600,marginBottom:4}}>{item.text}</div>
@@ -264,7 +468,7 @@ function App(){
 
     {/* INDICATORS */}
     {tab==="indicators"&&<div>
-      {INDICATORS.map(ind=>
+      {dash.indicators.map(ind=>
         <div key={ind.id} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:10,padding:"12px 16px",marginBottom:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
             <div style={{minWidth:40,textAlign:"center",fontSize:12,fontWeight:800,fontFamily:"monospace",color:ind.state>=0.8?"#ef4444":ind.state>=0.4?"#f59e0b":"#22c55e"}}>{ind.id}</div>
@@ -279,17 +483,20 @@ function App(){
           </div>
           <Bar value={ind.state} color={ind.state>=0.8?"#ef4444":ind.state>=0.4?"#f59e0b":"#22c55e"} h={6}/>
           <div style={{fontSize:11,color:"#cbd5e1",marginTop:6}}>{ind.detail}</div>
-          <div style={{fontSize:10,color:"#64748b",marginTop:4}}>출처: {ind.src} · 최신: {ind.ts} · 소스 {ind.srcCount}건</div>
+          <div style={{fontSize:10,color:"#64748b",marginTop:4}}>출처: {ind.src} · 최신: {formatFeedTs(ind)} · 소스 {Math.max(ind.srcCount||0,0)}건</div>
         </div>
       )}
       <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:10,padding:14,marginTop:4}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#22c55e"}}>✅ Evidence Floor PASSED — TIER0 confirmed: 3건 (I01, I02, I07)</div>
+        <div style={{fontSize:12,fontWeight:700,color: evidenceFloorT0>=3?"#22c55e":"#f59e0b"}}>
+          {evidenceFloorT0>=3 ? "✅ Evidence Floor PASSED" : "⚠ Evidence Floor not reached"}
+          {` — TIER0 교차검증: ${evidenceFloorT0}건`}
+        </div>
       </div>
     </div>}
 
     {/* ROUTES */}
     {tab==="routes"&&<div>
-      {ROUTES.map(r=>{
+      {dash.routes.map(r=>{
         const eff=r.base_h*(1+r.cong)*bf;
         return <div key={r.id} style={{background:"#0f172a",border:`1px solid ${r.status==="CAUTION"?"#92400e":"#1e293b"}`,borderRadius:10,padding:16,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>

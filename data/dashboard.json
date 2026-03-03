@@ -1,0 +1,357 @@
+{
+  "intelFeed": [
+    {
+      "ts": "2026-03-03 10:00",
+      "priority": "CRITICAL",
+      "verified": true,
+      "text": "Emirates & Etihad 모든 상업 운항 3월 5일 14:00까지 중단 연장",
+      "src": "LoyaltyLobby / Etihad 공식",
+      "impact": "I02 = 1.00 유지. 제한적 본국송환 편만 허용.",
+      "tsIso": "2026-03-03T10:00:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772532000000,
+      "hash": "4b5384b40ebfad7d62b185870b8b241a442d534d7130f6668614952d65d7fddc"
+    },
+    {
+      "ts": "2026-03-03 09:30",
+      "priority": "CRITICAL",
+      "verified": true,
+      "text": "미국 국무부 — 중동 12개국 이상 시민에 즉시 출국 촉구",
+      "src": "Al Jazeera / NBC News",
+      "impact": "I01 state 1.00 재확인. I07 강화.",
+      "tsIso": "2026-03-03T09:30:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772530200000,
+      "hash": "aa6b62841814aa7ba6bd191d9cfbcaa917f4b6042fcb7d52b054cf779876af4e"
+    },
+    {
+      "ts": "2026-03-03 08:00",
+      "priority": "HIGH",
+      "verified": true,
+      "text": "이란 3일 연속 걸프 지역 보복 공격 지속 — UAE/카타르/쿠웨이트 폭발",
+      "src": "Al Jazeera / CNBC",
+      "impact": "I03 = 1.00 유지. active_strike_window = true 연장.",
+      "tsIso": "2026-03-03T08:00:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772524800000,
+      "hash": "de85217f3c1515019e7088167fdc151b876532227da01398a69cdf253904bd93"
+    },
+    {
+      "ts": "2026-03-03 07:00",
+      "priority": "HIGH",
+      "verified": false,
+      "text": "이스라엘, 이란·헤즈볼라 동시 타격 (테헤란+베이루트) — 분쟁 확대",
+      "src": "CNBC Live Updates",
+      "impact": "에스컬레이션 추가. 이란 추가 보복 가능성↑",
+      "tsIso": "2026-03-03T07:00:00.000Z",
+      "sourceCount": 1,
+      "_updatedAt": 1772521200000,
+      "hash": "097fd6ecc1f49d86a3c191ca819566c70b2d5930cacb7c1c114fab851f875bac"
+    },
+    {
+      "ts": "2026-03-03 06:30",
+      "priority": "HIGH",
+      "verified": true,
+      "text": "인도 특별 구호편 10편 운항, UAE 제한적 출발 재개",
+      "src": "Outlook India / India TV",
+      "impact": "I07 state 1.00. 타국 대피 본격화.",
+      "tsIso": "2026-03-03T06:30:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772519400000,
+      "hash": "7f018b12c1f110a58fda47dc0ba7c57d0f0777325ba3fff27920747512cb3e26"
+    },
+    {
+      "ts": "2026-03-03 05:00",
+      "priority": "MEDIUM",
+      "verified": false,
+      "text": "태국 총리: 군용기 동원 중동 자국민 대피 준비 — 11,000명+ UAE 거주",
+      "src": "Nation Thailand",
+      "impact": "I07 추가 강화. 군사적 대피 수단 동원 단계.",
+      "tsIso": "2026-03-03T05:00:00.000Z",
+      "sourceCount": 1,
+      "_updatedAt": 1772514000000,
+      "hash": "6bbe246b3bb39f2762b93be4ebfd20955992d7e96e0ba50854fde91b84f33da2"
+    },
+    {
+      "ts": "2026-03-02 18:00",
+      "priority": "CRITICAL",
+      "verified": true,
+      "text": "미 국무부 비긴급 직원 + 가족 UAE 출국 명령 (Ordered Departure)",
+      "src": "US Embassy UAE / NBC News",
+      "impact": "I01 = 1.00. 미국 Ordered Departure는 극히 이례적.",
+      "tsIso": "2026-03-02T18:00:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772474400000,
+      "hash": "ad8378f107696527688bb5d9bfa3ef5b3742754baba3d4e0e8ef9b5063a266f0"
+    },
+    {
+      "ts": "2026-03-02 16:00",
+      "priority": "HIGH",
+      "verified": false,
+      "text": "AWS 데이터센터 2곳(UAE) + 1곳(바레인) 드론 피격으로 오프라인",
+      "src": "CNBC",
+      "impact": "I05 state 0.15↑ — 인프라 피해 시작.",
+      "tsIso": "2026-03-02T16:00:00.000Z",
+      "sourceCount": 1,
+      "_updatedAt": 1772467200000,
+      "hash": "e26866b179a2f525acb8d87366377a41210c29eb311c89860cc1551dc7d09067"
+    },
+    {
+      "ts": "2026-03-02 14:00",
+      "priority": "MEDIUM",
+      "verified": true,
+      "text": "UAE 슈퍼마켓 재고 안정화 — 패닉바잉 진정, 정부 비축분 충분",
+      "src": "The National / Khaleej Times / Gulf News",
+      "impact": "I06 0.50→0.35 하향.",
+      "tsIso": "2026-03-02T14:00:00.000Z",
+      "sourceCount": 3,
+      "_updatedAt": 1772460000000,
+      "hash": "dfe74a0e23d9d9c198efe706e9587013f04efb51af90ccb1286c9a657fe800b9"
+    },
+    {
+      "ts": "2026-03-02 11:00",
+      "priority": "HIGH",
+      "verified": true,
+      "text": "영국·호주 UAE 여행경보 'Do Not Travel' 최고 단계 격상",
+      "src": "VisaHQ / FCDO",
+      "impact": "I07 = 1.00 재확인.",
+      "tsIso": "2026-03-02T11:00:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772449200000,
+      "hash": "b73a89f549c2c2bb2ee80f9f34e5beddc394828deed548f4ddedeec024873804"
+    },
+    {
+      "ts": "2026-03-01 12:00",
+      "priority": "CRITICAL",
+      "verified": true,
+      "text": "UAE 국방부: 탄도미사일 165발, 드론 541기 탐지 — 3사망 58부상",
+      "src": "UAE MoD / Khaleej Times",
+      "impact": "I03 = 1.00. 파편 낙하로 민간 피해.",
+      "tsIso": "2026-03-01T12:00:00.000Z",
+      "sourceCount": 2,
+      "_updatedAt": 1772366400000,
+      "hash": "ae3a7ba2072ad0b1630ff51c011eaac7d01fc33db1d405c8f7ee8c079ea719d8"
+    },
+    {
+      "ts": "2026-02-28 19:00",
+      "priority": "CRITICAL",
+      "verified": true,
+      "text": "이란, 미-이스라엘 공습 보복으로 UAE 포함 걸프 전역 공격 개시",
+      "src": "Al Jazeera / CNN / Euronews",
+      "impact": "전체 상황 개시점.",
+      "tsIso": "2026-02-28T19:00:00.000Z",
+      "sourceCount": 3,
+      "_updatedAt": 1772305200000,
+      "hash": "e2198fc7f20b8f579684671638f320dd634e3617f4e389648cba8cf4e1008d43"
+    }
+  ],
+  "indicators": [
+    {
+      "id": "I01",
+      "name": "공식 여행경보/대사관 공지",
+      "tier": "TIER0",
+      "state": 1,
+      "confirmed": true,
+      "src": "US State Dept, NL, UK, AU, KR",
+      "ts": "2026-03-03 09:30",
+      "detail": "미국 Ordered Departure, 영국·호주 Do Not Travel, 한국 특별여행주의보",
+      "srcCount": 5,
+      "cv": true,
+      "tsIso": "2026-03-03T09:30:00.000Z",
+      "verified": true
+    },
+    {
+      "id": "I02",
+      "name": "공항/항공 운영",
+      "tier": "TIER0",
+      "state": 1,
+      "confirmed": true,
+      "src": "Etihad, GCAA, LoyaltyLobby",
+      "ts": "2026-03-03 10:00",
+      "detail": "Etihad/Emirates 3/5 14:00까지 전편 중단. 영공 부분 폐쇄.",
+      "srcCount": 4,
+      "cv": true,
+      "tsIso": "2026-03-03T10:00:00.000Z",
+      "verified": true
+    },
+    {
+      "id": "I03",
+      "name": "군사/안보 근접도",
+      "tier": "TIER1",
+      "state": 1,
+      "confirmed": true,
+      "src": "UAE MoD, Al Jazeera, CNN, BBC",
+      "ts": "2026-03-03 08:00",
+      "detail": "3일 연속 이란 공격. 미사일 165발 + 드론 541기. 3사망 58부상.",
+      "srcCount": 6,
+      "cv": true,
+      "tsIso": "2026-03-03T08:00:00.000Z",
+      "verified": true
+    },
+    {
+      "id": "I04",
+      "name": "치안/도로 통제",
+      "tier": "TIER1",
+      "state": 0.6,
+      "confirmed": false,
+      "src": "Time Out, US Embassy, Canada",
+      "ts": "2026-03-03 06:00",
+      "detail": "파편 지역 도로 폐쇄. 공식 통금 미확인. SMS 공습경보 운영.",
+      "srcCount": 3,
+      "cv": true,
+      "tsIso": "2026-03-03T06:00:00.000Z",
+      "verified": true
+    },
+    {
+      "id": "I05",
+      "name": "통신/인터넷",
+      "tier": "TIER1",
+      "state": 0.15,
+      "confirmed": true,
+      "src": "CNBC, 직접 확인",
+      "ts": "2026-03-03 04:00",
+      "detail": "일반 통신 정상. AWS UAE DC 2곳 오프라인.",
+      "srcCount": 2,
+      "cv": true,
+      "tsIso": "2026-03-03T04:00:00.000Z",
+      "verified": true
+    },
+    {
+      "id": "I06",
+      "name": "필수재/연료",
+      "tier": "TIER2",
+      "state": 0.35,
+      "confirmed": true,
+      "src": "The National, Khaleej Times, Gulf News",
+      "ts": "2026-03-02 16:00",
+      "detail": "패닉바잉 진정. 연료 정상 (E-Plus 91: AED 2.40/L).",
+      "srcCount": 4,
+      "cv": true,
+      "tsIso": "2026-03-02T16:00:00.000Z",
+      "verified": true
+    },
+    {
+      "id": "I07",
+      "name": "외국정부 행동",
+      "tier": "TIER0",
+      "state": 1,
+      "confirmed": true,
+      "src": "태국 총리, 인도 항공, UK/AU FCDO",
+      "ts": "2026-03-03 06:30",
+      "detail": "태국 군용기 대피, 인도 10편, UK/AU DNT + 대피 계획.",
+      "srcCount": 5,
+      "cv": true,
+      "tsIso": "2026-03-03T06:30:00.000Z",
+      "verified": true
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H0",
+      "name": "정상",
+      "score": 0.215,
+      "color": "#22c55e"
+    },
+    {
+      "id": "H1",
+      "name": "악화",
+      "score": 0.608,
+      "color": "#f59e0b"
+    },
+    {
+      "id": "H2",
+      "name": "철수준비",
+      "score": 0.798,
+      "color": "#ef4444"
+    }
+  ],
+  "routes": [
+    {
+      "id": "A",
+      "name": "Al Ain → Buraimi → Sohar",
+      "base_h": 7,
+      "status": "OPEN",
+      "cong": 0.35,
+      "note": "국경 OPEN 확인 (Canada Advisory)"
+    },
+    {
+      "id": "B",
+      "name": "Mezyad → Nizwa",
+      "base_h": 8.2,
+      "status": "OPEN",
+      "cong": 0.25,
+      "note": "국경 OPEN. 혼잡도 불확실."
+    },
+    {
+      "id": "C",
+      "name": "Saudi Ghuwaifat → Riyadh",
+      "base_h": 15.5,
+      "status": "CAUTION",
+      "cong": 0.55,
+      "note": "사우디 국경 OPEN이나 이란 대상국. 미 대사관 리야드 드론 피격."
+    },
+    {
+      "id": "D",
+      "name": "Fujairah → Khatmat → Muscat",
+      "base_h": 9.3,
+      "status": "OPEN",
+      "cong": 0.2,
+      "note": "오만 동해안 경유. 이란 공습 직접 경로 회피 가능."
+    }
+  ],
+  "checklist": [
+    {
+      "id": 1,
+      "text": "Bug-out bag (여권/ID/현금USD+AED/물2L/비상식량)",
+      "done": false
+    },
+    {
+      "id": 2,
+      "text": "차량 연료 Full 확인",
+      "done": false
+    },
+    {
+      "id": 3,
+      "text": "오만 보험 Orange Card 사전 구매",
+      "done": false
+    },
+    {
+      "id": 4,
+      "text": "대사관 긴급번호 저장 — KR: +971-2-643-8700",
+      "done": false
+    },
+    {
+      "id": 5,
+      "text": "Al Ain/Buraimi 루트 GPS 오프라인 맵",
+      "done": false
+    },
+    {
+      "id": 6,
+      "text": "가족/회사(SCT) 비상연락 완료",
+      "done": false
+    },
+    {
+      "id": 7,
+      "text": "15분마다 대사관/Etihad/BBC 확인",
+      "done": false
+    },
+    {
+      "id": 8,
+      "text": "SMS 공습경보 수신 확인",
+      "done": false
+    },
+    {
+      "id": 9,
+      "text": "창문 회피 안전구역(내벽) 확보",
+      "done": false
+    },
+    {
+      "id": 10,
+      "text": "NetherlandsWorldwide 정보서비스 등록",
+      "done": false
+    }
+  ],
+  "metadata": {
+    "egressLossETA": 2
+  }
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "reuters-middle-east",
+    "name": "Reuters Asia News",
+    "url": "https://www.reuters.com/world/middle-east/rss",
+    "kind": "rss",
+    "target": "intelFeed",
+    "src": "Reuters",
+    "defaultPriority": "HIGH",
+    "maxItems": 2,
+    "enabled": false
+  },
+  {
+    "id": "bbc-world",
+    "name": "BBC World",
+    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "kind": "rss",
+    "target": "intelFeed",
+    "src": "BBC",
+    "defaultPriority": "MEDIUM",
+    "maxItems": 2,
+    "enabled": false
+  }
+]
