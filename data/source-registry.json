@@ -162,7 +162,6 @@
     "src": "Azure Health",
     "defaultPriority": "LOW",
     "maxItems": 2,
-    "emitChannelSummary": true,
     "enabled": true
   },
   {

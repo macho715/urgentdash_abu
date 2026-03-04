@@ -13,6 +13,23 @@ const LOCK_STALE_MS = 10 * 60 * 1000;
 const MIN_EVIDENCE_SOURCES = 2;
 const FETCH_TIMEOUT_MS = 15000;
 
+// Relevance keywords: RSS items must contain at least one of these to be included.
+// Items unrelated to UAE/Gulf/Iran/security (e.g. China NPC, India Holi) are filtered out.
+const RELEVANCE_KEYWORDS = [
+  "uae", "dubai", "abu dhabi", "gulf", "iran", "middle east", "airspace",
+  "attack", "missile", "drone", "strike", "explosion", "evacuation",
+  "border", "flight cancel", "flight suspend", "repatriation",
+  "etihad", "emirates", "gcaa", "houthi", "israel", "hezbollah",
+  "oman", "saudi", "bahrain", "kuwait", "qatar", "manama", "riyadh",
+  "security alert", "travel advisory", "do not travel", "ordered departure",
+  "outage", "disruption", "market crash", "oil price", "crude",
+];
+
+function isRelevant(text = "") {
+  const lower = text.toLowerCase();
+  return RELEVANCE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -199,13 +216,18 @@ function normalizeDashboard(payload = {}) {
 
 function parseRss(xml, source) {
   const items = [];
+  const want = (source.maxItems || 3);
+  // Scan ALL items in feed (up to 40), apply relevance filter, take first `want` that pass
   const itemBlocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
-  for (const block of itemBlocks.slice(0, source.maxItems || 3)) {
+  for (const block of itemBlocks.slice(0, 40)) {
+    if (items.length >= want) break;
     const title = extractTag(block, "title");
     const link = extractTag(block, "link");
     const pubDate = extractTag(block, "pubDate") || extractTag(block, "dc:date");
     const summary = extractTag(block, "description");
     if (!title) continue;
+    // Skip items unrelated to UAE/Gulf/Iran/security
+    if (!isRelevant(title + " " + summary)) continue;
     const tsIso = toTsIso(pubDate) || new Date().toISOString();
     const rawItem = {
       priority: source.defaultPriority || "MEDIUM",
@@ -219,12 +241,14 @@ function parseRss(xml, source) {
 
   if (items.length === 0) {
     const entryBlocks = xml.match(/<entry[\s\S]*?<\/entry>/gi) || [];
-    for (const block of entryBlocks.slice(0, source.maxItems || 3)) {
+    for (const block of entryBlocks.slice(0, 40)) {
+      if (items.length >= want) break;
       const title = extractTag(block, "title");
       const link = extractAttr(block, "link", "href") || extractTag(block, "id");
       const pubDate = extractTag(block, "updated") || extractTag(block, "published");
       const summary = extractTag(block, "summary") || extractTag(block, "content");
       if (!title) continue;
+      if (!isRelevant(title + " " + summary)) continue;
       const tsIso = toTsIso(pubDate) || new Date().toISOString();
       items.push(normalizeIntelItem({
         priority: source.defaultPriority || "MEDIUM",
