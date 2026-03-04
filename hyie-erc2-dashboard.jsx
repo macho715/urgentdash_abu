@@ -145,10 +145,37 @@ const HYPOTHESES = [
 ];
 
 const ROUTES = [
-  { id: "A", name: "Al Ain → Buraimi → Sohar", base_h: 7.0, status: "OPEN", congestion: 0.35, note: "UAE-Oman 국경 OPEN 확인 (Canada Advisory). Al Rawdah 신규 통과점 추가 가용." },
-  { id: "B", name: "Mezyad → Nizwa", base_h: 8.2, status: "OPEN", congestion: 0.25, note: "국경 OPEN. 혼잡도 불확실." },
-  { id: "C", name: "Saudi Ghuwaifat → Riyadh", base_h: 15.5, status: "CAUTION", congestion: 0.55, note: "사우디 국경 OPEN이나 이란 보복 대상국. 미 대사관 리야드 드론 피격 보도." },
-  { id: "D", name: "Fujairah → Khatmat Malaha → Muscat", base_h: 9.3, status: "OPEN", congestion: 0.20, note: "오만 동해안 경유. 이란 공습 직접 경로 회피 가능. 대체 루트로 유효." },
+  {
+    id: "A", name: "Al Ain → Buraimi → Sohar", base_h: 7.0, status: "CAUTION", congestion: 0.90,
+    note: "Al Ain 국경 혼잡 심화. 통과 가능하나 지연 예상. effective 20.8h.",
+    newsRefs: [
+      { src: "The National", text: "UAE 거주자 이란 피격 여행 차질로 28시간 우회 귀환 (항공+육로)", ts: "2026-03-04" },
+      { src: "Google News / BBC", text: "미국, 중동 자국민 긴급 소개 항공편 투입 — 육로 혼잡 가중 예상", ts: "2026-03-04" },
+    ],
+  },
+  {
+    id: "B", name: "Mezyad → Nizwa", base_h: 8.2, status: "CAUTION", congestion: 0.60,
+    note: "국경 기능 유지 중이나 이란 공습 여파로 대기 시간 증가. effective 20.5h.",
+    newsRefs: [
+      { src: "The National", text: "이란 공습으로 UAE 전반 여행 차질 — 육로 국경 혼잡도 상승", ts: "2026-03-04" },
+    ],
+  },
+  {
+    id: "C", name: "Saudi Ghuwaifat → Riyadh", base_h: 15.5, status: "BLOCKED", congestion: 0.65,
+    note: "쿠웨이트 드론 피격·걸프 왕정 압박 — 사우디 경유 위험. 사용 금지.",
+    newsRefs: [
+      { src: "BBC", text: "쿠웨이트 드론 공격으로 미군 첫 전사 — 걸프 전역 확전", ts: "2026-03-04" },
+      { src: "Google News / Carnegie", text: "걸프 왕정 이란-미 사이 딜레마 — 사우디 보복 대상 가능성", ts: "2026-03-04" },
+    ],
+  },
+  {
+    id: "D", name: "Fujairah → Khatmat Malaha → Muscat", base_h: 9.3, status: "BLOCKED", congestion: 0.35,
+    note: "Hormuz 긴장으로 유가 급등·항만 운영 제한. 동해안 루트 차단 상태.",
+    newsRefs: [
+      { src: "BBC", text: "국제유가·가스 급등 — Strait of Hormuz 봉쇄 우려 직접 반영", ts: "2026-03-04" },
+      { src: "Al Jazeera", text: "바그다드 공항 인근 폭발 — 걸프 항공·항만 연쇄 차질 패턴", ts: "2026-03-04" },
+    ],
+  },
 ];
 
 const CHECKLIST = [
@@ -625,18 +652,21 @@ export default function Dashboard() {
             const effectiveH = r.base_h * (1 + r.congestion) * bufferFactor;
             return (
               <div key={r.id} style={{
-                background: "#0f172a", border: `1px solid ${r.status === "CAUTION" ? "#92400e" : "#1e293b"}`,
+                background: "#0f172a",
+                border: `1px solid ${r.status === "BLOCKED" ? "#7f1d1d" : r.status === "CAUTION" ? "#92400e" : "#14532d"}`,
                 borderRadius: 10, padding: 16,
+                opacity: r.status === "BLOCKED" ? 0.75 : 1,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{
                       width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-                      background: r.status === "CAUTION" ? "#92400e" : "#14532d", fontSize: 13, fontWeight: 800, color: "#fff",
+                      background: r.status === "BLOCKED" ? "#7f1d1d" : r.status === "CAUTION" ? "#92400e" : "#14532d",
+                      fontSize: 13, fontWeight: 800, color: "#fff",
                     }}>{r.id}</span>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>{r.name}</div>
-                      <div style={{ fontSize: 10, color: r.status === "CAUTION" ? "#f59e0b" : "#22c55e" }}>{r.status}</div>
+                      <div style={{ fontSize: 10, color: r.status === "BLOCKED" ? "#ef4444" : r.status === "CAUTION" ? "#f59e0b" : "#22c55e" }}>{r.status}</div>
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -658,13 +688,34 @@ export default function Dashboard() {
                     <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace", color: "#f59e0b" }}>x{bufferFactor.toFixed(1)}</div>
                   </div>
                 </div>
-                <div style={{ fontSize: 10, color: "#94a3b8", background: "#0d1117", borderRadius: 6, padding: 8 }}>{r.note}</div>
+                <div style={{ fontSize: 10, color: "#94a3b8", background: "#0d1117", borderRadius: 6, padding: 8, marginBottom: 6 }}>{r.note}</div>
+                {r.newsRefs && r.newsRefs.length > 0 && (
+                  <div style={{ background: "#0a0f1a", border: "1px solid #1e3a5f", borderRadius: 6, padding: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                      <span style={{ background: "#1e3a5f", color: "#60a5fa", fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.05em" }}>📰 뉴스 참조</span>
+                      <span style={{ fontSize: 9, color: "#475569" }}>실시간 검증 미완료 — 공식 채널 교차확인 필요</span>
+                    </div>
+                    {r.newsRefs.map(function(ref, ri) {
+                      return (
+                        <div key={ri} style={{ display: "flex", gap: 6, alignItems: "flex-start", marginTop: ri > 0 ? 4 : 0 }}>
+                          <span style={{ color: "#3b82f6", fontSize: 9, minWidth: 6, marginTop: 2 }}>▸</span>
+                          <div>
+                            <span style={{ fontSize: 9, color: "#60a5fa", fontWeight: 600 }}>[{ref.src}]</span>
+                            <span style={{ fontSize: 9, color: "#94a3b8", marginLeft: 4 }}>{ref.text}</span>
+                            <span style={{ fontSize: 9, color: "#475569", marginLeft: 4 }}>{ref.ts}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
           <div style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 11, color: "#f59e0b", textAlign: "center", marginBottom: 6 }}>⚠ Slack 계산 불가 — EgressLossETA 미입력</div>
-            <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center" }}>최우선 경로: A (Al Ain → Buraimi) — 국경 OPEN 확인, 최단 effective lead 18.9h</div>
+            <div style={{ fontSize: 11, color: "#ef4444", textAlign: "center", marginBottom: 6 }}>🚨 C/D 차단 — A/B CAUTION 경유 즉시 출발 권고</div>
+            <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginBottom: 4 }}>최우선 경로: A (Al Ain → Buraimi) CAUTION — effective 20.8h | B (Mezyad → Nizwa) CAUTION — effective 20.5h</div>
+            <div style={{ fontSize: 9, color: "#475569", textAlign: "center" }}>⚠ 루트 상태는 뉴스 기사 키워드 기반 추정 — icp.gov.ae · rop.gov.om 공식 채널 교차확인 필수</div>
           </div>
         </div>
       )}
