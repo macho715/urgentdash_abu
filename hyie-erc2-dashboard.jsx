@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ═══════════════════════════════════════════════════════
 // VERIFIED REAL-TIME DATA — Sources collected 2026-03-03
@@ -237,6 +237,144 @@ function GaugeArc({ value, size = 90, color, label, subLabel }) {
 }
 
 const priorityColors = { CRITICAL: "#ef4444", HIGH: "#f59e0b", MEDIUM: "#3b82f6", LOW: "#22c55e" };
+const SNAPSHOT_REQUIRED_KEYS = ["intel_feed", "indicators", "hypotheses", "routes", "checklist"];
+const SNAPSHOT_POLL_MS = 30_000;
+const API_STATE_CANDIDATES = ["/api/state", "../api/state", "api/state"];
+
+function dubaiDatePart() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date());
+}
+
+function snapshotJsonlCandidates(datePart) {
+  return [
+    `../urgentdash_snapshots/${datePart}.jsonl`,
+    `/urgentdash_snapshots/${datePart}.jsonl`,
+    `urgentdash_snapshots/${datePart}.jsonl`,
+  ];
+}
+
+function hasSnapshotShape(obj) {
+  return (
+    obj &&
+    typeof obj === "object" &&
+    SNAPSHOT_REQUIRED_KEYS.every((k) => Object.prototype.hasOwnProperty.call(obj, k))
+  );
+}
+
+function inferIndicatorVerified(indicator) {
+  const tier = String(indicator?.tier || "").toUpperCase();
+  const srcCount = Number(indicator?.src_count ?? indicator?.srcCount ?? 0);
+  if (tier === "TIER0") {
+    return srcCount >= 1;
+  }
+  return srcCount >= 2;
+}
+
+function normalizeIndicators(rows, { applyEvidenceFloor = true } = {}) {
+  return (rows || []).map((ind) => {
+    const tsIso = String(ind?.tsIso || ind?.ts || new Date().toISOString());
+    const verified = applyEvidenceFloor ? inferIndicatorVerified(ind) : false;
+    const srcCount = Number(ind?.src_count ?? ind?.srcCount ?? 0);
+    return {
+      ...ind,
+      ts: tsIso,
+      tsIso,
+      src_count: srcCount,
+      srcCount,
+      confirmed: verified,
+      cv: verified,
+      crossVerified: verified,
+    };
+  });
+}
+
+function normalizeIntel(rows, { trustVerified = false } = {}) {
+  return (rows || []).map((item) => {
+    const tsIso = String(item?.tsIso || item?.ts || new Date().toISOString());
+    return {
+      ...item,
+      ts: tsIso,
+      tsIso,
+      verified: trustVerified ? Boolean(item?.verified) : false,
+    };
+  });
+}
+
+function parseLatestSnapshotFromJsonl(text) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    try {
+      const parsed = JSON.parse(lines[i]);
+      if (hasSnapshotShape(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // keep scanning older lines
+    }
+  }
+  return null;
+}
+
+async function fetchLatestSnapshot() {
+  const datePart = dubaiDatePart();
+  for (const candidate of snapshotJsonlCandidates(datePart)) {
+    try {
+      const res = await fetch(`${candidate}?t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) {
+        continue;
+      }
+      const text = await res.text();
+      const snapshot = parseLatestSnapshotFromJsonl(text);
+      if (snapshot) {
+        return { snapshot, source: candidate };
+      }
+    } catch {
+      // keep trying next location
+    }
+  }
+  return null;
+}
+
+function healthSummary(sourceHealth) {
+  if (!sourceHealth || typeof sourceHealth !== "object") {
+    return "health: n/a";
+  }
+  const rows = Object.values(sourceHealth);
+  if (!rows.length) {
+    return "health: n/a";
+  }
+  const ok = rows.filter((row) => row && row.ok).length;
+  return `health: ${ok}/${rows.length} ok`;
+}
+
+async function fetchApiState() {
+  for (const candidate of API_STATE_CANDIDATES) {
+    try {
+      const res = await fetch(`${candidate}?t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) {
+        continue;
+      }
+      const payload = await res.json();
+      if (hasSnapshotShape(payload)) {
+        return { snapshot: payload, source: candidate };
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+  return null;
+}
+
+async function fetchLatestLivePayload() {
+  const fromApi = await fetchApiState();
+  if (fromApi) {
+    return fromApi;
+  }
+  return fetchLatestSnapshot();
+}
 
 // ═══════════════════════════════════════════════════════
 // MAIN DASHBOARD
@@ -244,10 +382,19 @@ const priorityColors = { CRITICAL: "#ef4444", HIGH: "#f59e0b", MEDIUM: "#3b82f6"
 
 export default function Dashboard() {
   const [now, setNow] = useState(new Date());
+  const [intelFeed, setIntelFeed] = useState(() => normalizeIntel(INTEL_FEED, { trustVerified: false }));
+  const [indicators, setIndicators] = useState(() => normalizeIndicators(INDICATORS, { applyEvidenceFloor: false }));
+  const [hypotheses, setHypotheses] = useState(HYPOTHESES);
+  const [routes, setRoutes] = useState(ROUTES);
   const [checklist, setChecklist] = useState(CHECKLIST);
   const [activeTab, setActiveTab] = useState("overview");
   const [nextEval, setNextEval] = useState(900);
   const [feedFilter, setFeedFilter] = useState("ALL");
+  const [liveSnapshotTs, setLiveSnapshotTs] = useState("");
+  const [liveSource, setLiveSource] = useState("static");
+  const [liveDegraded, setLiveDegraded] = useState(false);
+  const [liveHealth, setLiveHealth] = useState("health: n/a");
+  const lastSnapshotTsRef = useRef("");
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -257,12 +404,65 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+
+    const applySnapshot = (snapshot, source) => {
+      if (!hasSnapshotShape(snapshot)) {
+        return;
+      }
+      const ts =
+        typeof snapshot.state_ts === "string"
+          ? snapshot.state_ts
+          : (typeof snapshot.snapshot_ts === "string" ? snapshot.snapshot_ts : "");
+      if (ts && ts === lastSnapshotTsRef.current) {
+        return;
+      }
+      if (
+        !Array.isArray(snapshot.intel_feed) ||
+        !Array.isArray(snapshot.indicators) ||
+        !Array.isArray(snapshot.hypotheses) ||
+        !Array.isArray(snapshot.routes) ||
+        !Array.isArray(snapshot.checklist)
+      ) {
+        return;
+      }
+      setIntelFeed(normalizeIntel(snapshot.intel_feed, { trustVerified: true }));
+      setIndicators(normalizeIndicators(snapshot.indicators, { applyEvidenceFloor: true }));
+      setHypotheses(snapshot.hypotheses);
+      setRoutes(snapshot.routes);
+      setChecklist(snapshot.checklist);
+      if (ts) {
+        lastSnapshotTsRef.current = ts;
+        setLiveSnapshotTs(ts);
+      }
+      setLiveSource(source);
+      setLiveDegraded(Boolean(snapshot.degraded));
+      setLiveHealth(healthSummary(snapshot.source_health));
+    };
+
+    const poll = async () => {
+      const result = await fetchLatestLivePayload();
+      if (!alive || !result) {
+        return;
+      }
+      applySnapshot(result.snapshot, result.source);
+    };
+
+    poll();
+    const timer = setInterval(poll, SNAPSHOT_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, []);
+
   const toggleCheck = useCallback((id) => {
     setChecklist(prev => prev.map(c => c.id === id ? { ...c, done: !c.done } : c));
   }, []);
 
   const completedCount = checklist.filter(c => c.done).length;
-  const deltaScore = HYPOTHESES[2].score - HYPOTHESES[1].score;
+  const deltaScore = (hypotheses[2]?.score ?? 0) - (hypotheses[1]?.score ?? 0);
   const evidenceConf = 0.78;
   const urgencyScore = null;
   const effectiveThreshold = 0.80;
@@ -278,7 +478,7 @@ export default function Dashboard() {
   ];
 
   const fmt = (s) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
-  const filteredFeed = feedFilter === "ALL" ? INTEL_FEED : INTEL_FEED.filter(f => f.priority === feedFilter);
+  const filteredFeed = feedFilter === "ALL" ? intelFeed : intelFeed.filter(f => f.priority === feedFilter);
 
   return (
     <div style={{
@@ -299,9 +499,21 @@ export default function Dashboard() {
             <div style={{ fontSize: 13, fontFamily: "monospace", color: "#94a3b8" }}>
               {now.toISOString().slice(0, 10)} {now.toTimeString().slice(0, 8)}
             </div>
+            <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+              {liveSnapshotTs ? `state: ${liveSnapshotTs}` : "state: static seed"}
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end", marginTop: 4 }}>
               <PulsingDot color="#f59e0b" />
               <span style={{ fontSize: 11, color: "#f59e0b" }}>다음 평가: {fmt(nextEval)}</span>
+            </div>
+            <div style={{ fontSize: 10, color: liveDegraded ? "#ef4444" : "#475569", marginTop: 2 }}>
+              degraded: {liveDegraded ? "true" : "false"}
+            </div>
+            <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>
+              source: {liveSource}
+            </div>
+            <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>
+              {liveHealth}
             </div>
           </div>
         </div>
@@ -375,7 +587,7 @@ export default function Dashboard() {
           {/* Hypothesis Scores */}
           <Card title="Hypothesis Scores (HyIE)" icon="🧠" accent="#334155">
             <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 12 }}>
-              {HYPOTHESES.map(h => <GaugeArc key={h.id} value={h.score} color={h.color} label={h.id} subLabel={h.name} />)}
+              {hypotheses.map(h => <GaugeArc key={h.id} value={h.score} color={h.color} label={h.id} subLabel={h.name} />)}
             </div>
             <div style={{ background: "#1e293b", borderRadius: 8, padding: 10, fontSize: 11 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -541,7 +753,7 @@ export default function Dashboard() {
                 border: `1px solid ${feedFilter === f ? (priorityColors[f] || "#334155") : "#1e293b"}`,
                 borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 600,
                 color: feedFilter === f ? "#fff" : "#64748b", cursor: "pointer",
-              }}>{f} {f !== "ALL" && `(${INTEL_FEED.filter(i => i.priority === f).length})`}</button>
+              }}>{f} {f !== "ALL" && `(${intelFeed.filter(i => i.priority === f).length})`}</button>
             ))}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -573,7 +785,7 @@ export default function Dashboard() {
       {/* ══════════════════════ INDICATORS TAB ══════════════════════ */}
       {activeTab === "indicators" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {INDICATORS.map(ind => (
+          {indicators.map(ind => (
             <div key={ind.id} style={{
               background: "#0f172a", border: "1px solid #1e293b", borderRadius: 10, padding: "12px 16px",
             }}>
@@ -621,8 +833,9 @@ export default function Dashboard() {
       {/* ══════════════════════ ROUTES TAB ══════════════════════ */}
       {activeTab === "routes" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {ROUTES.map(r => {
-            const effectiveH = r.base_h * (1 + r.congestion) * bufferFactor;
+          {routes.map(r => {
+            const routeCong = typeof r.congestion === "number" ? r.congestion : (typeof r.cong === "number" ? r.cong : 0);
+            const effectiveH = r.base_h * (1 + routeCong) * bufferFactor;
             return (
               <div key={r.id} style={{
                 background: "#0f172a", border: `1px solid ${r.status === "CAUTION" ? "#92400e" : "#1e293b"}`,
@@ -651,7 +864,7 @@ export default function Dashboard() {
                   </div>
                   <div style={{ background: "#1e293b", borderRadius: 6, padding: 8, textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "#64748b" }}>Congestion</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace", color: r.congestion > 0.3 ? "#f59e0b" : "#94a3b8" }}>x{(1 + r.congestion).toFixed(2)}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace", color: routeCong > 0.3 ? "#f59e0b" : "#94a3b8" }}>x{(1 + routeCong).toFixed(2)}</div>
                   </div>
                   <div style={{ background: "#1e293b", borderRadius: 6, padding: 8, textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "#64748b" }}>Buffer</div>

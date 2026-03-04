@@ -17,7 +17,7 @@ body{background:#020617;font-family:'Inter',-apple-system,system-ui,sans-serif}
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState,useEffect,useCallback}=React;
+const {useState,useEffect,useCallback,useRef}=React;
 
 const INTEL_FEED=[
 {ts:"Mar 3 14:00",priority:"CRITICAL",verified:true,text:"Emirates & Etihad 모든 상업 운항 3월 5일 14:00까지 중단 연장",src:"LoyaltyLobby / Etihad 공식",impact:"I02 = 1.00 유지. 제한적 본국송환 편만 허용."},
@@ -71,6 +71,117 @@ const CL_INIT=[
 ];
 
 const pC={CRITICAL:"#ef4444",HIGH:"#f59e0b",MEDIUM:"#3b82f6"};
+const SNAPSHOT_REQUIRED_KEYS=["intel_feed","indicators","hypotheses","routes","checklist"];
+const SNAPSHOT_POLL_MS=30000;
+const API_STATE_CANDIDATES=["/api/state","../api/state","api/state"];
+
+function dubaiDatePart(){
+  return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dubai"}).format(new Date());
+}
+
+function snapshotJsonlCandidates(datePart){
+  return [`../urgentdash_snapshots/${datePart}.jsonl`,`/urgentdash_snapshots/${datePart}.jsonl`,`urgentdash_snapshots/${datePart}.jsonl`];
+}
+
+function hasSnapshotShape(obj){
+  return obj&&typeof obj==="object"&&SNAPSHOT_REQUIRED_KEYS.every(k=>Object.prototype.hasOwnProperty.call(obj,k));
+}
+
+function inferIndicatorVerified(indicator){
+  const tier=String(indicator?.tier||"").toUpperCase();
+  const srcCount=Number(indicator?.src_count??indicator?.srcCount??0);
+  if(tier==="TIER0") return srcCount>=1;
+  return srcCount>=2;
+}
+
+function normalizeIndicators(rows,{applyEvidenceFloor=true}={}){
+  return (rows||[]).map(ind=>{
+    const tsIso=String(ind?.tsIso||ind?.ts||new Date().toISOString());
+    const verified=applyEvidenceFloor?inferIndicatorVerified(ind):false;
+    const srcCount=Number(ind?.src_count??ind?.srcCount??0);
+    return {
+      ...ind,
+      ts:tsIso,
+      tsIso,
+      src_count:srcCount,
+      srcCount:srcCount,
+      confirmed:verified,
+      cv:verified,
+      crossVerified:verified,
+    };
+  });
+}
+
+function normalizeIntel(rows,{trustVerified=false}={}){
+  return (rows||[]).map(item=>{
+    const tsIso=String(item?.tsIso||item?.ts||new Date().toISOString());
+    return {
+      ...item,
+      ts:tsIso,
+      tsIso,
+      verified:trustVerified?Boolean(item?.verified):false,
+    };
+  });
+}
+
+function parseLatestSnapshotFromJsonl(text){
+  const lines=text.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+  for(let i=lines.length-1;i>=0;i-=1){
+    try{
+      const parsed=JSON.parse(lines[i]);
+      if(hasSnapshotShape(parsed)) return parsed;
+    }catch{
+      // keep scanning
+    }
+  }
+  return null;
+}
+
+async function fetchLatestSnapshot(){
+  const datePart=dubaiDatePart();
+  for(const candidate of snapshotJsonlCandidates(datePart)){
+    try{
+      const res=await fetch(`${candidate}?t=${Date.now()}`,{cache:"no-store"});
+      if(!res.ok) continue;
+      const text=await res.text();
+      const snapshot=parseLatestSnapshotFromJsonl(text);
+      if(snapshot) return {snapshot,source:candidate};
+    }catch{
+      // try next candidate
+    }
+  }
+  return null;
+}
+
+function healthSummary(sourceHealth){
+  if(!sourceHealth||typeof sourceHealth!=="object") return "health: n/a";
+  const rows=Object.values(sourceHealth);
+  if(!rows.length) return "health: n/a";
+  const ok=rows.filter(r=>r&&r.ok).length;
+  return `health: ${ok}/${rows.length} ok`;
+}
+
+async function fetchApiState(){
+  for(const candidate of API_STATE_CANDIDATES){
+    try{
+      const res=await fetch(`${candidate}?t=${Date.now()}`,{cache:"no-store"});
+      if(!res.ok) continue;
+      const payload=await res.json();
+      if(hasSnapshotShape(payload)){
+        return {snapshot:payload,source:candidate};
+      }
+    }catch{
+      // try next
+    }
+  }
+  return null;
+}
+
+async function fetchLatestLivePayload(){
+  const fromApi=await fetchApiState();
+  if(fromApi) return fromApi;
+  return fetchLatestSnapshot();
+}
 
 function Pulse({color}){
   const[o,sO]=useState(1);
@@ -101,19 +212,57 @@ function Gauge({value,color,label,sub}){
 
 function App(){
   const[now,sN]=useState(new Date());
+  const[intelFeed,sIntelFeed]=useState(()=>normalizeIntel(INTEL_FEED,{trustVerified:false}));
+  const[indicators,sIndicators]=useState(()=>normalizeIndicators(INDICATORS,{applyEvidenceFloor:false}));
+  const[hypotheses,sHypotheses]=useState(HYPOTHESES);
+  const[routes,sRoutes]=useState(ROUTES);
   const[cl,sCl]=useState(CL_INIT);
   const[tab,sT]=useState("overview");
   const[ne,sNe]=useState(900);
   const[ff,sFF]=useState("ALL");
+  const[liveSnapshotTs,sLiveSnapshotTs]=useState("");
+  const[liveSource,sLiveSource]=useState("static");
+  const[liveDegraded,sLiveDegraded]=useState(false);
+  const[liveHealth,sLiveHealth]=useState("health: n/a");
+  const lastSnapshotTsRef=useRef("");
 
   useEffect(()=>{const t=setInterval(()=>{sN(new Date());sNe(p=>p<=0?900:p-1)},1000);return()=>clearInterval(t)},[]);
+  useEffect(()=>{
+    let alive=true;
+    const applySnapshot=(snapshot,source)=>{
+      if(!hasSnapshotShape(snapshot)) return;
+      const ts=typeof snapshot.state_ts==="string"?snapshot.state_ts:(typeof snapshot.snapshot_ts==="string"?snapshot.snapshot_ts:"");
+      if(ts&&ts===lastSnapshotTsRef.current) return;
+      if(!Array.isArray(snapshot.intel_feed)||!Array.isArray(snapshot.indicators)||!Array.isArray(snapshot.hypotheses)||!Array.isArray(snapshot.routes)||!Array.isArray(snapshot.checklist)) return;
+      sIntelFeed(normalizeIntel(snapshot.intel_feed,{trustVerified:true}));
+      sIndicators(normalizeIndicators(snapshot.indicators,{applyEvidenceFloor:true}));
+      sHypotheses(snapshot.hypotheses);
+      sRoutes(snapshot.routes);
+      sCl(snapshot.checklist);
+      if(ts){
+        lastSnapshotTsRef.current=ts;
+        sLiveSnapshotTs(ts);
+      }
+      sLiveSource(source);
+      sLiveDegraded(Boolean(snapshot.degraded));
+      sLiveHealth(healthSummary(snapshot.source_health));
+    };
+    const poll=async()=>{
+      const result=await fetchLatestLivePayload();
+      if(!alive||!result) return;
+      applySnapshot(result.snapshot,result.source);
+    };
+    poll();
+    const timer=setInterval(poll,SNAPSHOT_POLL_MS);
+    return ()=>{alive=false;clearInterval(timer)};
+  },[]);
   const tog=useCallback(id=>sCl(p=>p.map(c=>c.id===id?{...c,done:!c.done}:c)),[]);
   const cc=cl.filter(c=>c.done).length;
-  const ds=HYPOTHESES[2].score-HYPOTHESES[1].score;
+  const ds=(hypotheses[2]?.score??0)-(hypotheses[1]?.score??0);
   const ec=0.78;
   const bf=2.0;
   const fmt=s=>`${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
-  const fFeed=ff==="ALL"?INTEL_FEED:INTEL_FEED.filter(f=>f.priority===ff);
+  const fFeed=ff==="ALL"?intelFeed:intelFeed.filter(f=>f.priority===ff);
   const tabs=[{id:"overview",l:"Overview",i:"📊"},{id:"intel",l:"Intel Feed",i:"🔴"},{id:"indicators",l:"Indicators",i:"📡"},{id:"routes",l:"Routes",i:"🛣️"},{id:"checklist",l:"Checklist",i:"✅"}];
 
   return <div style={{minHeight:"100vh",background:"#020617",color:"#e2e8f0",fontFamily:"'Inter',-apple-system,sans-serif",padding:12,maxWidth:920,margin:"0 auto"}}>
@@ -128,10 +277,14 @@ function App(){
         <div style={{textAlign:"right"}}>
           <div style={{fontSize:11,color:"#64748b"}}>Abu Dhabi, UAE (GST +4)</div>
           <div style={{fontSize:13,fontFamily:"monospace",color:"#94a3b8"}}>{now.toISOString().slice(0,10)} {now.toTimeString().slice(0,8)}</div>
+          <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{liveSnapshotTs?`state: ${liveSnapshotTs}`:"state: static seed"}</div>
           <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginTop:4}}>
             <Pulse color="#f59e0b"/>
             <span style={{fontSize:11,color:"#f59e0b"}}>다음 평가: {fmt(ne)}</span>
           </div>
+          <div style={{fontSize:10,color:liveDegraded?"#ef4444":"#475569",marginTop:2}}>degraded: {liveDegraded?"true":"false"}</div>
+          <div style={{fontSize:10,color:"#475569",marginTop:2}}>source: {liveSource}</div>
+          <div style={{fontSize:10,color:"#475569",marginTop:2}}>{liveHealth}</div>
         </div>
       </div>
     </div>
@@ -171,7 +324,7 @@ function App(){
       <div style={{background:"#0f172a",border:"1px solid #334155",borderRadius:12,padding:16}}>
         <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12,letterSpacing:1}}>🧠 HYPOTHESIS SCORES (HyIE)</div>
         <div style={{display:"flex",justifyContent:"space-around",marginBottom:12}}>
-          {HYPOTHESES.map(h=><Gauge key={h.id} value={h.score} color={h.color} label={h.id} sub={h.name}/>)}
+          {hypotheses.map(h=><Gauge key={h.id} value={h.score} color={h.color} label={h.id} sub={h.name}/>)}
         </div>
         <div style={{background:"#1e293b",borderRadius:8,padding:10,fontSize:11}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:"#94a3b8"}}>Leading:</span><span style={{color:"#ef4444",fontWeight:700}}>H2 철수준비 (0.798)</span></div>
@@ -244,7 +397,7 @@ function App(){
     {/* INTEL FEED */}
     {tab==="intel"&&<div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {["ALL","CRITICAL","HIGH","MEDIUM"].map(f=><button key={f} onClick={()=>sFF(f)} style={{background:ff===f?(pC[f]||"#334155"):"transparent",border:`1px solid ${ff===f?(pC[f]||"#334155"):"#1e293b"}`,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,color:ff===f?"#fff":"#64748b",cursor:"pointer"}}>{f} {f!=="ALL"&&`(${INTEL_FEED.filter(i=>i.priority===f).length})`}</button>)}
+        {["ALL","CRITICAL","HIGH","MEDIUM"].map(f=><button key={f} onClick={()=>sFF(f)} style={{background:ff===f?(pC[f]||"#334155"):"transparent",border:`1px solid ${ff===f?(pC[f]||"#334155"):"#1e293b"}`,borderRadius:6,padding:"4px 12px",fontSize:11,fontWeight:600,color:ff===f?"#fff":"#64748b",cursor:"pointer"}}>{f} {f!=="ALL"&&`(${intelFeed.filter(i=>i.priority===f).length})`}</button>)}
       </div>
       {fFeed.map((item,i)=>
         <div key={i} style={{background:"#0f172a",border:`1px solid ${item.priority==="CRITICAL"?"#7f1d1d":"#1e293b"}`,borderLeft:`3px solid ${pC[item.priority]}`,borderRadius:8,padding:"10px 14px",marginBottom:6}}>
@@ -264,7 +417,7 @@ function App(){
 
     {/* INDICATORS */}
     {tab==="indicators"&&<div>
-      {INDICATORS.map(ind=>
+      {indicators.map(ind=>
         <div key={ind.id} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:10,padding:"12px 16px",marginBottom:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
             <div style={{minWidth:40,textAlign:"center",fontSize:12,fontWeight:800,fontFamily:"monospace",color:ind.state>=0.8?"#ef4444":ind.state>=0.4?"#f59e0b":"#22c55e"}}>{ind.id}</div>
@@ -289,8 +442,9 @@ function App(){
 
     {/* ROUTES */}
     {tab==="routes"&&<div>
-      {ROUTES.map(r=>{
-        const eff=r.base_h*(1+r.cong)*bf;
+      {routes.map(r=>{
+        const routeCong=typeof r.cong==="number"?r.cong:(typeof r.congestion==="number"?r.congestion:0);
+        const eff=r.base_h*(1+routeCong)*bf;
         return <div key={r.id} style={{background:"#0f172a",border:`1px solid ${r.status==="CAUTION"?"#92400e":"#1e293b"}`,borderRadius:10,padding:16,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -301,7 +455,7 @@ function App(){
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
             <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Base</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:"#94a3b8"}}>{r.base_h}h</div></div>
-            <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Congestion</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:r.cong>0.3?"#f59e0b":"#94a3b8"}}>x{(1+r.cong).toFixed(2)}</div></div>
+            <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Congestion</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:routeCong>0.3?"#f59e0b":"#94a3b8"}}>x{(1+routeCong).toFixed(2)}</div></div>
             <div style={{background:"#1e293b",borderRadius:6,padding:8,textAlign:"center"}}><div style={{fontSize:10,color:"#64748b"}}>Buffer</div><div style={{fontSize:14,fontWeight:700,fontFamily:"monospace",color:"#f59e0b"}}>x{bf.toFixed(1)}</div></div>
           </div>
           <div style={{fontSize:10,color:"#94a3b8",background:"#0d1117",borderRadius:6,padding:8}}>{r.note}</div>
