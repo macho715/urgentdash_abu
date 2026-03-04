@@ -1,356 +1,154 @@
 {
   "intelFeed": [
     {
-      "ts": "2026-03-03 10:00",
-      "priority": "CRITICAL",
-      "verified": true,
-      "text": "Emirates & Etihad 모든 상업 운항 3월 5일 14:00까지 중단 연장",
-      "src": "LoyaltyLobby / Etihad 공식",
-      "impact": "I02 = 1.00 유지. 제한적 본국송환 편만 허용.",
-      "tsIso": "2026-03-03T10:00:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772532000000,
-      "hash": "4b5384b40ebfad7d62b185870b8b241a442d534d7130f6668614952d65d7fddc"
-    },
-    {
-      "ts": "2026-03-03 09:30",
-      "priority": "CRITICAL",
-      "verified": true,
-      "text": "미국 국무부 — 중동 12개국 이상 시민에 즉시 출국 촉구",
-      "src": "Al Jazeera / NBC News",
-      "impact": "I01 state 1.00 재확인. I07 강화.",
-      "tsIso": "2026-03-03T09:30:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772530200000,
-      "hash": "aa6b62841814aa7ba6bd191d9cfbcaa917f4b6042fcb7d52b054cf779876af4e"
-    },
-    {
-      "ts": "2026-03-03 08:00",
-      "priority": "HIGH",
-      "verified": true,
-      "text": "이란 3일 연속 걸프 지역 보복 공격 지속 — UAE/카타르/쿠웨이트 폭발",
-      "src": "Al Jazeera / CNBC",
-      "impact": "I03 = 1.00 유지. active_strike_window = true 연장.",
-      "tsIso": "2026-03-03T08:00:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772524800000,
-      "hash": "de85217f3c1515019e7088167fdc151b876532227da01398a69cdf253904bd93"
-    },
-    {
-      "ts": "2026-03-03 07:00",
-      "priority": "HIGH",
+      "priority": "LOW",
+      "text": "View the overall status and health of AWS services using the AWS Health Dashboard.",
+      "src": "AWS Health",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:51:36.677Z",
+      "ts": "2026-03-04 00:51",
       "verified": false,
-      "text": "이스라엘, 이란·헤즈볼라 동시 타격 (테헤란+베이루트) — 분쟁 확대",
-      "src": "CNBC Live Updates",
-      "impact": "에스컬레이션 추가. 이란 추가 보복 가능성↑",
-      "tsIso": "2026-03-03T07:00:00.000Z",
       "sourceCount": 1,
-      "_updatedAt": 1772521200000,
-      "hash": "097fd6ecc1f49d86a3c191ca819566c70b2d5930cacb7c1c114fab851f875bac"
+      "_updatedAt": 1772585496677,
+      "hash": "0a2fbc5c18cdebd75d7ad2e08298f614929729f5ef9859e8acd702110e5abce4"
     },
     {
-      "ts": "2026-03-03 06:30",
       "priority": "HIGH",
-      "verified": true,
-      "text": "인도 특별 구호편 10편 운항, UAE 제한적 출발 재개",
-      "src": "Outlook India / India TV",
-      "impact": "I07 state 1.00. 타국 대피 본격화.",
-      "tsIso": "2026-03-03T06:30:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772519400000,
-      "hash": "7f018b12c1f110a58fda47dc0ba7c57d0f0777325ba3fff27920747512cb3e26"
+      "text": "Travel updates | Help | Emirates — Find out about the latest travel updates and any flight changes or cancellations. We update this page regularly with the most recent travel updates.",
+      "src": "Emirates Airlines",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:51:35.952Z",
+      "ts": "2026-03-04 00:51",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772585495952,
+      "hash": "65c825889f4a3cce2147724d5f902ba6e4f2b749c7b6e2063471ef9b7f2ad544"
     },
     {
-      "ts": "2026-03-03 05:00",
+      "priority": "HIGH",
+      "text": "Home — The AIM Office provides a range of on-line services to ensure the availability of information required for safety, regularity and efficiency of international and national air navigation.",
+      "src": "UAE GCAA",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:51:35.580Z",
+      "ts": "2026-03-04 00:51",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772585495580,
+      "hash": "be8a8335aa508ffb7d3e3865614c46d53879e64e50bf18823809f83e6f8261f5"
+    },
+    {
+      "priority": "HIGH",
+      "text": "United Arab Emirates travel advice - GOV.UK — FCDO travel advice for United Arab Emirates. Includes safety and security, insurance, entry requirements and legal differences.",
+      "src": "UK FCDO",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:51:35.248Z",
+      "ts": "2026-03-04 00:51",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772585495248,
+      "hash": "46c33047dcad6322441a4dfe2b81420d00013a306bf74581f1574c1b323f8b29"
+    },
+    {
+      "priority": "HIGH",
+      "text": "Rubio claim of Israeli role in US Iran attack reverberates, despite denial — Commentators across political spectrum, including MAGA base, seize on Rubio&#039;s words amid shifting war justification",
+      "src": "Al Jazeera / https://www.aljazeera.com/news/2026/3/4/rubio-claim-of-israeli-role-in-us-iran-attack-reverberates-despite-denial?traffic_source=rss",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:18:27.000Z",
+      "ts": "2026-03-04 00:18",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772583507000,
+      "hash": "ea7220d2fb3c2eedbff24980c7c7df2f8acf72aa71f49692a16223126bbbaf8d"
+    },
+    {
+      "priority": "HIGH",
+      "text": "Macron warns Israel against Lebanon invasion — French President Emmanuel Macron has warned Israel against invading Lebanon.",
+      "src": "Al Jazeera / https://www.aljazeera.com/video/newsfeed/2026/3/4/macron-warns-israel-against-lebanon-invasion?traffic_source=rss",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:06:53.000Z",
+      "ts": "2026-03-04 00:06",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772582813000,
+      "hash": "51f9ce0798ae0cab70f1cab516dfdd580f3baf9ea8311a2629b6de76d5753465"
+    },
+    {
+      "priority": "HIGH",
+      "text": "Iran live news: US embassy in Dubai hit; Israel pounds Tehran, Beirut — US and Israel continue to pound Iran and Lebanon, as Tehran&#039;s counterstrikes disrupt oil flows in the Middle East.",
+      "src": "Al Jazeera / https://www.aljazeera.com/news/liveblog/2026/3/4/iran-live-news-us-embassy-in-dubai-hit-israel-pounds-tehran-beirut?traffic_source=rss",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-04T00:00:26.000Z",
+      "ts": "2026-03-04 00:00",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772582426000,
+      "hash": "69ef27de9e561ca41658810a48de0f4180e7bdff12b14c695d96833ef84a33d3"
+    },
+    {
       "priority": "MEDIUM",
+      "text": "Prediction market 'gambling' needs state regulation, not feds, Mick Mulvaney says after Iran war bets — Mick Mulvaney also said prediction markets, by offering contracts on events such as wars, could",
+      "src": "CNBC / https://www.cnbc.com/2026/03/03/prediction-market-gambling-mick-mulvaney-polymarket-kalshi.html",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-03T23:36:59.000Z",
+      "ts": "2026-03-03 23:36",
       "verified": false,
-      "text": "태국 총리: 군용기 동원 중동 자국민 대피 준비 — 11,000명+ UAE 거주",
-      "src": "Nation Thailand",
-      "impact": "I07 추가 강화. 군사적 대피 수단 동원 단계.",
-      "tsIso": "2026-03-03T05:00:00.000Z",
       "sourceCount": 1,
-      "_updatedAt": 1772514000000,
-      "hash": "6bbe246b3bb39f2762b93be4ebfd20955992d7e96e0ba50854fde91b84f33da2"
+      "_updatedAt": 1772581019000,
+      "hash": "d250e1be0600e5974c15a3ffe8f2b0722f0c6443823b0925effa6dece6d03143"
     },
     {
-      "ts": "2026-03-02 18:00",
-      "priority": "CRITICAL",
-      "verified": true,
-      "text": "미 국무부 비긴급 직원 + 가족 UAE 출국 명령 (Ordered Departure)",
-      "src": "US Embassy UAE / NBC News",
-      "impact": "I01 = 1.00. 미국 Ordered Departure는 극히 이례적.",
-      "tsIso": "2026-03-02T18:00:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772474400000,
-      "hash": "ad8378f107696527688bb5d9bfa3ef5b3742754baba3d4e0e8ef9b5063a266f0"
-    },
-    {
-      "ts": "2026-03-02 16:00",
       "priority": "HIGH",
+      "text": "Unpacking US justification for Iran attacks — US officials confirmed the US didn’t attack Iran because of an ‘imminent threat’ but because Israel was going to strike.",
+      "src": "Al Jazeera / https://www.aljazeera.com/video/newsfeed/2026/3/3/unpacking-us-justification-for-iran-attacks?traffic_source=rss",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-03T23:18:06.000Z",
+      "ts": "2026-03-03 23:18",
       "verified": false,
-      "text": "AWS 데이터센터 2곳(UAE) + 1곳(바레인) 드론 피격으로 오프라인",
-      "src": "CNBC",
-      "impact": "I05 state 0.15↑ — 인프라 피해 시작.",
-      "tsIso": "2026-03-02T16:00:00.000Z",
       "sourceCount": 1,
-      "_updatedAt": 1772467200000,
-      "hash": "e26866b179a2f525acb8d87366377a41210c29eb311c89860cc1551dc7d09067"
+      "_updatedAt": 1772579886000,
+      "hash": "c2fd38aac8ff4947c789ba71b8c02ef7443ee468d80e8d67389adf4481ae7ebe"
     },
     {
-      "ts": "2026-03-02 14:00",
       "priority": "MEDIUM",
-      "verified": true,
-      "text": "UAE 슈퍼마켓 재고 안정화 — 패닉바잉 진정, 정부 비축분 충분",
-      "src": "The National / Khaleej Times / Gulf News",
-      "impact": "I06 0.50→0.35 하향.",
-      "tsIso": "2026-03-02T14:00:00.000Z",
-      "sourceCount": 3,
-      "_updatedAt": 1772460000000,
-      "hash": "dfe74a0e23d9d9c198efe706e9587013f04efb51af90ccb1286c9a657fe800b9"
+      "text": "Epstein files: Goldman Sachs lawyer Kathryn Ruemmler asked to testify to House panel — Kathryn Ruemmler said last month she would leave Goldman Sachs at the end of June after fallout over her emails w",
+      "src": "CNBC / https://www.cnbc.com/2026/03/03/epstein-kathryn-ruemmler-goldman-sachs.html",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-03T22:59:22.000Z",
+      "ts": "2026-03-03 22:59",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772578762000,
+      "hash": "170a2d777ead9d347bc23dcd3e62b08f7d5119b0ac537ffab78775a8cf51fd80"
     },
     {
-      "ts": "2026-03-02 11:00",
-      "priority": "HIGH",
-      "verified": true,
-      "text": "영국·호주 UAE 여행경보 'Do Not Travel' 최고 단계 격상",
-      "src": "VisaHQ / FCDO",
-      "impact": "I07 = 1.00 재확인.",
-      "tsIso": "2026-03-02T11:00:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772449200000,
-      "hash": "b73a89f549c2c2bb2ee80f9f34e5beddc394828deed548f4ddedeec024873804"
+      "priority": "MEDIUM",
+      "text": "European allies rush to bolster Cyprus defences after drones target British base — The Cypriot government suspects the Iran-backed group Hezbollah in Lebanon targeted the UK's RAF Akrotiri base in Cyp",
+      "src": "BBC / https://www.bbc.com/news/articles/c4g74npdwnyo?at_medium=RSS&at_campaign=rss",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-03T22:10:09.000Z",
+      "ts": "2026-03-03 22:10",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772575809000,
+      "hash": "3ecb165087cf0d0942cf6fa13106b6146c741275a84eae6fa49c18ce721e9d97"
     },
     {
-      "ts": "2026-03-01 12:00",
-      "priority": "CRITICAL",
-      "verified": true,
-      "text": "UAE 국방부: 탄도미사일 165발, 드론 541기 탐지 — 3사망 58부상",
-      "src": "UAE MoD / Khaleej Times",
-      "impact": "I03 = 1.00. 파편 낙하로 민간 피해.",
-      "tsIso": "2026-03-01T12:00:00.000Z",
-      "sourceCount": 2,
-      "_updatedAt": 1772366400000,
-      "hash": "ae3a7ba2072ad0b1630ff51c011eaac7d01fc33db1d405c8f7ee8c079ea719d8"
-    },
-    {
-      "ts": "2026-02-28 19:00",
-      "priority": "CRITICAL",
-      "verified": true,
-      "text": "이란, 미-이스라엘 공습 보복으로 UAE 포함 걸프 전역 공격 개시",
-      "src": "Al Jazeera / CNN / Euronews",
-      "impact": "전체 상황 개시점.",
-      "tsIso": "2026-02-28T19:00:00.000Z",
-      "sourceCount": 3,
-      "_updatedAt": 1772305200000,
-      "hash": "e2198fc7f20b8f579684671638f320dd634e3617f4e389648cba8cf4e1008d43"
+      "priority": "MEDIUM",
+      "text": "Epstein files: Howard Lutnick volunteers to testify to House Oversight Committee — Commerce Secretary Lutnick \"has proactively agreed to appear voluntarily\" before the House Oversight Committee, said",
+      "src": "CNBC / https://www.cnbc.com/2026/03/03/lutnick-epstein-trump-house-oversight.html",
+      "impact": "자동 수집 반영",
+      "tsIso": "2026-03-03T21:58:34.000Z",
+      "ts": "2026-03-03 21:58",
+      "verified": false,
+      "sourceCount": 1,
+      "_updatedAt": 1772575114000,
+      "hash": "9493a3322e1a27f2fd00bd5e9ba7c79a494af67e283777c2540e949ca85c03df"
     }
   ],
-  "indicators": [
-    {
-      "id": "I01",
-      "name": "공식 여행경보/대사관 공지",
-      "tier": "TIER0",
-      "state": 1,
-      "confirmed": true,
-      "src": "US State Dept, NL, UK, AU, KR",
-      "ts": "2026-03-03 09:30",
-      "detail": "미국 Ordered Departure, 영국·호주 Do Not Travel, 한국 특별여행주의보",
-      "srcCount": 5,
-      "cv": true,
-      "tsIso": "2026-03-03T09:30:00.000Z",
-      "verified": true
-    },
-    {
-      "id": "I02",
-      "name": "공항/항공 운영",
-      "tier": "TIER0",
-      "state": 1,
-      "confirmed": true,
-      "src": "Etihad, GCAA, LoyaltyLobby",
-      "ts": "2026-03-03 10:00",
-      "detail": "Etihad/Emirates 3/5 14:00까지 전편 중단. 영공 부분 폐쇄.",
-      "srcCount": 4,
-      "cv": true,
-      "tsIso": "2026-03-03T10:00:00.000Z",
-      "verified": true
-    },
-    {
-      "id": "I03",
-      "name": "군사/안보 근접도",
-      "tier": "TIER1",
-      "state": 1,
-      "confirmed": true,
-      "src": "UAE MoD, Al Jazeera, CNN, BBC",
-      "ts": "2026-03-03 08:00",
-      "detail": "3일 연속 이란 공격. 미사일 165발 + 드론 541기. 3사망 58부상.",
-      "srcCount": 6,
-      "cv": true,
-      "tsIso": "2026-03-03T08:00:00.000Z",
-      "verified": true
-    },
-    {
-      "id": "I04",
-      "name": "치안/도로 통제",
-      "tier": "TIER1",
-      "state": 0.6,
-      "confirmed": false,
-      "src": "Time Out, US Embassy, Canada",
-      "ts": "2026-03-03 06:00",
-      "detail": "파편 지역 도로 폐쇄. 공식 통금 미확인. SMS 공습경보 운영.",
-      "srcCount": 3,
-      "cv": true,
-      "tsIso": "2026-03-03T06:00:00.000Z",
-      "verified": true
-    },
-    {
-      "id": "I05",
-      "name": "통신/인터넷",
-      "tier": "TIER1",
-      "state": 0.15,
-      "confirmed": true,
-      "src": "CNBC, 직접 확인",
-      "ts": "2026-03-03 04:00",
-      "detail": "일반 통신 정상. AWS UAE DC 2곳 오프라인.",
-      "srcCount": 2,
-      "cv": true,
-      "tsIso": "2026-03-03T04:00:00.000Z",
-      "verified": true
-    },
-    {
-      "id": "I06",
-      "name": "필수재/연료",
-      "tier": "TIER2",
-      "state": 0.35,
-      "confirmed": true,
-      "src": "The National, Khaleej Times, Gulf News",
-      "ts": "2026-03-02 16:00",
-      "detail": "패닉바잉 진정. 연료 정상 (E-Plus 91: AED 2.40/L).",
-      "srcCount": 4,
-      "cv": true,
-      "tsIso": "2026-03-02T16:00:00.000Z",
-      "verified": true
-    },
-    {
-      "id": "I07",
-      "name": "외국정부 행동",
-      "tier": "TIER0",
-      "state": 1,
-      "confirmed": true,
-      "src": "태국 총리, 인도 항공, UK/AU FCDO",
-      "ts": "2026-03-03 06:30",
-      "detail": "태국 군용기 대피, 인도 10편, UK/AU DNT + 대피 계획.",
-      "srcCount": 5,
-      "cv": true,
-      "tsIso": "2026-03-03T06:30:00.000Z",
-      "verified": true
-    }
-  ],
-  "hypotheses": [
-    {
-      "id": "H0",
-      "name": "정상",
-      "score": 0.215,
-      "color": "#22c55e"
-    },
-    {
-      "id": "H1",
-      "name": "악화",
-      "score": 0.608,
-      "color": "#f59e0b"
-    },
-    {
-      "id": "H2",
-      "name": "철수준비",
-      "score": 0.798,
-      "color": "#ef4444"
-    }
-  ],
-  "routes": [
-    {
-      "id": "A",
-      "name": "Al Ain → Buraimi → Sohar",
-      "base_h": 7,
-      "status": "OPEN",
-      "cong": 0.35,
-      "note": "국경 OPEN 확인 (Canada Advisory)"
-    },
-    {
-      "id": "B",
-      "name": "Mezyad → Nizwa",
-      "base_h": 8.2,
-      "status": "OPEN",
-      "cong": 0.25,
-      "note": "국경 OPEN. 혼잡도 불확실."
-    },
-    {
-      "id": "C",
-      "name": "Saudi Ghuwaifat → Riyadh",
-      "base_h": 15.5,
-      "status": "CAUTION",
-      "cong": 0.55,
-      "note": "사우디 국경 OPEN이나 이란 대상국. 미 대사관 리야드 드론 피격."
-    },
-    {
-      "id": "D",
-      "name": "Fujairah → Khatmat → Muscat",
-      "base_h": 9.3,
-      "status": "OPEN",
-      "cong": 0.2,
-      "note": "오만 동해안 경유. 이란 공습 직접 경로 회피 가능."
-    }
-  ],
-  "checklist": [
-    {
-      "id": 1,
-      "text": "Bug-out bag (여권/ID/현금USD+AED/물2L/비상식량)",
-      "done": false
-    },
-    {
-      "id": 2,
-      "text": "차량 연료 Full 확인",
-      "done": false
-    },
-    {
-      "id": 3,
-      "text": "오만 보험 Orange Card 사전 구매",
-      "done": false
-    },
-    {
-      "id": 4,
-      "text": "대사관 긴급번호 저장 — KR: +971-2-643-8700",
-      "done": false
-    },
-    {
-      "id": 5,
-      "text": "Al Ain/Buraimi 루트 GPS 오프라인 맵",
-      "done": false
-    },
-    {
-      "id": 6,
-      "text": "가족/회사(SCT) 비상연락 완료",
-      "done": false
-    },
-    {
-      "id": 7,
-      "text": "15분마다 대사관/Etihad/BBC 확인",
-      "done": false
-    },
-    {
-      "id": 8,
-      "text": "SMS 공습경보 수신 확인",
-      "done": false
-    },
-    {
-      "id": 9,
-      "text": "창문 회피 안전구역(내벽) 확보",
-      "done": false
-    },
-    {
-      "id": 10,
-      "text": "NetherlandsWorldwide 정보서비스 등록",
-      "done": false
-    }
-  ],
+  "indicators": [],
+  "hypotheses": [],
+  "routes": [],
+  "checklist": [],
   "metadata": {
     "egressLossETA": 2
   }

@@ -11,6 +11,7 @@ const LOCK_RETRY_MS = 900;
 const LOCK_RETRY_LIMIT = 45;
 const LOCK_STALE_MS = 10 * 60 * 1000;
 const MIN_EVIDENCE_SOURCES = 2;
+const FETCH_TIMEOUT_MS = 15000;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -18,6 +19,7 @@ function sleep(ms) {
 
 function stripTags(value = "") {
   return value
+    .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]*>/g, " ")
@@ -90,13 +92,41 @@ function toHash(source) {
   return crypto.createHash("sha256").update(source, "utf8").digest("hex");
 }
 
+// Words that are media-type tokens, not publisher names — filter after split
+const MEDIA_TYPE_TOKENS = new Set([
+  "html", "rss", "json", "xml", "feed", "web", "page", "rss2",
+]);
+
 function deriveEvidenceFromSources(src = "") {
-  const sources = splitSources(src);
-  const sourceCount = sources.length;
+  // Strip "/ <url>" patterns BEFORE splitting (RSS parser appends article links as "/ https://...")
+  // Without this, URL path segments (/news/2026/3/1/article) inflate sourceCount wrongly
+  const cleanSrc = src.replace(/\s*\/\s*https?:\/\/\S*/g, "");
+  const sources = splitSources(cleanSrc)
+    .filter((s) => s && !MEDIA_TYPE_TOKENS.has(s.toLowerCase()));
+  // Deduplicate by lowercased name
+  const unique = [...new Set(sources.map((s) => s.toLowerCase()))];
+  const sourceCount = unique.length;
   return {
     sourceCount,
     verified: sourceCount >= MIN_EVIDENCE_SOURCES,
   };
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const { timeoutMs = FETCH_TIMEOUT_MS, headers = {} } = options;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      headers,
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function normalizeIntelItem(raw = {}) {
@@ -182,23 +212,117 @@ function parseRss(xml, source) {
   return items;
 }
 
+function extractMeta(html, name) {
+  // Handles both name= and property= (OpenGraph)
+  const patterns = [
+    new RegExp(`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']{4,})["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']{4,})["'][^>]+name=["']${name}["']`, "i"),
+    new RegExp(`<meta[^>]+property=["']${name}["'][^>]+content=["']([^"']{4,})["']`, "i"),
+    new RegExp(`<meta[^>]+content=["']([^"']{4,})["'][^>]+property=["']${name}["']`, "i"),
+  ];
+  for (const pat of patterns) {
+    const m = html.match(pat);
+    if (m) return stripTags(m[1]).trim();
+  }
+  return "";
+}
+
+function extractFirstParagraph(html) {
+  // Try article / main / section context first, then any <p>
+  const zones = [
+    /<(?:article|main|section)[^>]*>([\s\S]*?)<\/(?:article|main|section)>/i,
+  ];
+  for (const zone of zones) {
+    const zm = html.match(zone);
+    if (zm) {
+      const pm = zm[1].match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+      if (pm) {
+        const text = stripTags(pm[1]).trim();
+        if (text.length > 20) return text;
+      }
+    }
+  }
+  const pm = html.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+  if (pm) {
+    const text = stripTags(pm[1]).trim();
+    if (text.length > 20) return text;
+  }
+  return "";
+}
+
 function parseHtml(html, source) {
-  const title = extractTag(html, "title") || "웹 페이지 타이틀 갱신";
+  const pageTitle = extractTag(html, "title") || "";
+
+  // Prefer og:description → description meta → first <h1> → first meaningful <p>
+  const desc =
+    extractMeta(html, "og:description") ||
+    extractMeta(html, "description") ||
+    extractTag(html, "h1") ||
+    extractFirstParagraph(html);
+
+  const rawText = desc && desc.length > 10
+    ? `${pageTitle ? pageTitle + " — " : ""}${desc}`.slice(0, 220)
+    : pageTitle.slice(0, 150);
+
+  // Reject generic / useless page titles with no description
+  const JUNK_TITLES = /^(home|index|error|403|404|503|technical difficulties|access denied|just a moment|please wait|cloudflare|웹 페이지 타이틀 갱신)$/i;
+  if (!rawText || JUNK_TITLES.test(rawText.trim())) {
+    return []; // Skip — no useful content
+  }
+
+  // Use source.src directly — do NOT append "/ HTML" (causes false verified)
   return [
     normalizeIntelItem({
       priority: source.defaultPriority || "LOW",
-      text: title.slice(0, 150),
-      src: `${source.src || source.name} / HTML`,
+      text: rawText.trim(),
+      src: source.src || source.name,
       impact: "자동 수집 반영",
       tsIso: new Date().toISOString(),
     }),
   ];
 }
 
+function parseJson(body, source) {
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    return [];
+  }
+
+  // Support Azure-style feeds: { incidents: [...] } or { items: [...] } or root array
+  const incidents =
+    (Array.isArray(data) ? data : null) ||
+    data?.incidents ||
+    data?.items ||
+    data?.value ||
+    [];
+
+  if (!Array.isArray(incidents)) return [];
+
+  return incidents
+    .slice(0, source.maxItems || 3)
+    .map((item) => {
+      const title = String(
+        item.title || item.name || item.summary || item.description || ""
+      ).trim();
+      if (!title) return null;
+      const tsRaw = item.lastModifiedTime || item.modifiedOn || item.pubDate || item.date || "";
+      return normalizeIntelItem({
+        priority: source.defaultPriority || "MEDIUM",
+        text: title.slice(0, 200),
+        src: source.src || source.name,
+        impact: item.status || "자동 수집 반영",
+        tsIso: tsRaw ? toTsIso(tsRaw) || new Date().toISOString() : new Date().toISOString(),
+      });
+    })
+    .filter(Boolean);
+}
+
 const parsers = {
   rss: parseRss,
   html: parseHtml,
-  json: () => [],
+  json: parseJson,
 };
 
 function mergeIntelItems(nextItems, existingItems) {
@@ -275,9 +399,8 @@ async function readJsonSafe(filePath, fallback) {
 }
 
 async function fetchSource(source) {
-  const res = await fetch(source.url, {
+  const res = await fetchWithTimeout(source.url, {
     headers: { "user-agent": "urgentdash-scraper/1.0" },
-    cache: "no-store",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = await res.text();

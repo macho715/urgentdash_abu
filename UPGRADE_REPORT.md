@@ -175,4 +175,82 @@
 
 ---
 
+## 11. 실행 기록 (2026-03-04): “수집 소스 다양화” 작업 로그
+
+### 11.1 변경 요약
+
+- `data/source-registry.json`에 기존 2개 소스(Reuters, BBC) 외에 15개 항목을 추가.
+- 총 소스 수: 17개.
+- 기존 동작을 유지하기 위해 기존 항목은 유지하고 `enabled: true` 상태로 등록.
+- `scripts/update-dashboard.mjs`에 CDATA 처리 보강.
+- 동일 스크립트에 `fetch` 타임아웃 로직을 추가해 수집 루틴이 장시간 정체되지 않도록 보완.
+
+### 11.2 추가된 소스 항목 (현재 등록 상태)
+
+- `reuters-middle-east` (Reuters Asia News, rss, enabled)
+- `bbc-world` (BBC World, rss, enabled)
+- `usembassy-uae-travel` (US Embassy UAE, html, enabled)
+- `korea-mofa-travel-notice` (Korea MOFA, html, enabled)
+- `govuk-uae-travel-advice` (UK FCDO, html, enabled)
+- `etihad-travel-updates` (Etihad, html, enabled)
+- `emirates-travel-updates` (Emirates, html, enabled)
+- `gcaa-notam` (UAE GCAA, html, enabled)
+- `uae-mod-defense` (UAE MOD, html, enabled)
+- `aljazeera-rss` (Al Jazeera, rss, enabled)
+- `cnbc-middle-east-rss` (CNBC, rss, enabled)
+- `cnn-breaking-rss` (CNN, rss, enabled)
+- `downdetector-etisalat` (Downdetector, html, enabled)
+- `aws-status-ae` (AWS status page, html, enabled)
+- `azure-status` (Azure status feed, json(파서 미지원), enabled)
+- `gulfnews-rss` (Gulf News, rss, enabled)
+- `khaleej-times-rss` (Khaleej Times, rss, enabled)
+
+### 11.3 코드/설계 변경 내역
+
+- 파일: `data/source-registry.json`
+  - 소스 객체 배열을 확장하고 `id/name/url/kind/target/src/defaultPriority/maxItems/enabled` 규칙 유지.
+- 파일: `scripts/update-dashboard.mjs`
+  - `stripTags()`에 `CDATA` 제거 로직 추가.
+  - `FETCH_TIMEOUT_MS` 상수 추가(10,000ms).
+  - `fetchWithTimeout()` 유틸 추가 및 `fetchSource()`에 적용.
+  - 덕분에 개별 소스 네트워크 지연이 전체 파이프라인의 데드록을 유발하지 않도록 처리.
+
+### 11.4 실행 및 검증 결과
+
+- 실행 명령: `node scripts/update-dashboard.mjs`
+- 최종 로그:
+  - `dashboard.json updated { count: 12 }`
+  - `skip source reuters-middle-east HTTP 401`
+  - `skip source korea-mofa-travel-notice HTTP 404`
+  - `skip source etihad-travel-updates This operation was aborted`
+  - `skip source uae-mod-defense HTTP 404`
+  - `skip source cnn-breaking-rss fetch failed`
+  - `skip source downdetector-etisalat HTTP 403`
+  - `skip source gulfnews-rss HTTP 404`
+  - `skip source khaleej-times-rss HTTP 404`
+- 결과: 수집 자체는 실행되며(최신 반영 시 `dashboard.json updated`), 일부 소스는 접근 제약(401/403/404/타임아웃)으로 제외 처리.
+- `data/source-registry.json`은 `enabled true` 기준 17개로 확인됨.
+
+### 11.5 리스크/이슈
+
+- Reuters/유사 상용 언론 피드는 로봇 차단 또는 네트워크 정책으로 401/403 응답 가능성 다수.
+- HTML 파서(`parseHtml`)는 페이지 타이틀 중심 추출이라 정보 밀도는 RSS 대비 낮음.
+- `azure-status`는 현재 `json` 타입이지만 현재 파서에서는 미지원으로 실제 item 수집 없음.
+- 수집 안정성 측면에서 주기 실행 시 장애 소스가 있는 경우 `skip` 로그 관리가 필요.
+
+### 11.6 후속 제안(권장)
+
+- 1) `azure-status`를 rss/json 지원 포맷에 맞춰 정규화 파서를 추가.
+- 2) 접근 실패가 반복되는 소스는 `enabled: false` 상태로 임시 격리 후 수동 검증 후 재활성.
+- 3) 30분 GitHub Actions 실행 로그 기준으로 `No new feed items`/`skip` 분포를 모니터링해 실제로 유효한 소스 비율 점검.
+- 4) 향후 수집 실패가 잦은 소스는 수집 URL 대체(예: 공식 보도자료/안내 RSS 전용 페이지)로 교체.
+
+### 11.7 산출물 상태
+
+- 변경 파일: `data/source-registry.json`, `scripts/update-dashboard.mjs`, (자동 실행 결과로 `data/dashboard.json` 갱신)
+- 계획 문맥: 30분 스케줄 수집 동작의 소스 레지스트리 레이어는 확장 완료.
+- 아직 미확정 항목: 실제 수집 대상의 신뢰도 검증 및 실패 소스 정제.
+
+---
+
 *Refs: project-upgrade skill v1.1 — Evidence + Best3 Deep. 코드/커밋/배포 자동 적용 없음. §10: upgrade-web-scout.*
