@@ -1,8 +1,8 @@
 [
   {
     "id": "reuters-world-rss",
-    "name": "Reuters World News RSS",
-    "url": "https://feeds.reuters.com/reuters/worldNews",
+    "name": "Reuters (Google News RSS)",
+    "url": "https://news.google.com/rss/search?q=site:reuters.com+UAE+Iran&hl=en-AE&gl=AE&ceid=AE:en",
     "kind": "rss",
     "target": "intelFeed",
     "src": "Reuters",
@@ -67,8 +67,8 @@
   },
   {
     "id": "gulfnews-rss",
-    "name": "Gulf News RSS",
-    "url": "https://gulfnews.com/rss/home.xml",
+    "name": "Gulf News (Google News RSS)",
+    "url": "https://news.google.com/rss/search?q=site:gulfnews.com+UAE+security&hl=en-AE&gl=AE&ceid=AE:en",
     "kind": "rss",
     "target": "intelFeed",
     "src": "Gulf News",
@@ -78,8 +78,8 @@
   },
   {
     "id": "thenational-rss",
-    "name": "The National UAE RSS",
-    "url": "https://www.thenationalnews.com/rss/world.xml",
+    "name": "The National (Google News RSS)",
+    "url": "https://news.google.com/rss/search?q=site:thenationalnews.com+UAE&hl=en-AE&gl=AE&ceid=AE:en",
     "kind": "rss",
     "target": "intelFeed",
     "src": "The National",
@@ -89,8 +89,8 @@
   },
   {
     "id": "arabnews-rss",
-    "name": "Arab News RSS",
-    "url": "https://www.arabnews.com/rss.xml",
+    "name": "Arab News (Google News RSS)",
+    "url": "https://news.google.com/rss/search?q=site:arabnews.com+UAE&hl=en-AE&gl=AE&ceid=AE:en",
     "kind": "rss",
     "target": "intelFeed",
     "src": "Arab News",
@@ -100,11 +100,11 @@
   },
   {
     "id": "usembassy-uae-travel",
-    "name": "U.S. Embassy UAE Travel",
-    "url": "https://ae.usembassy.gov/advise-consular-and-citizen-services/visa-and-travel/important-travel-information/",
+    "name": "U.S. Travel Advisory UAE",
+    "url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/united-arab-emirates-travel-advisory.html",
     "kind": "html",
     "target": "intelFeed",
-    "src": "US Embassy UAE",
+    "src": "US State Dept",
     "defaultPriority": "HIGH",
     "maxItems": 2,
     "enabled": true
@@ -162,6 +162,7 @@
     "src": "Azure Health",
     "defaultPriority": "LOW",
     "maxItems": 2,
+    "emitChannelSummary": true,
     "enabled": true
   },
   {

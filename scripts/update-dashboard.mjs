@@ -47,6 +47,13 @@ function extractTag(html, tag) {
   return m ? stripTags(m[1]) : "";
 }
 
+function extractAttr(block = "", tag, attr) {
+  const m = block.match(
+    new RegExp(`<${tag}[^>]*\\s${attr}=["']([^"']+)["'][^>]*>`, "i"),
+  );
+  return m ? stripTags(m[1]) : "";
+}
+
 function parseTimestamp(value) {
   const text = String(value || "").trim();
   const monthMap = {
@@ -209,6 +216,45 @@ function parseRss(xml, source) {
     };
     items.push(normalizeIntelItem(rawItem));
   }
+
+  if (items.length === 0) {
+    const entryBlocks = xml.match(/<entry[\s\S]*?<\/entry>/gi) || [];
+    for (const block of entryBlocks.slice(0, source.maxItems || 3)) {
+      const title = extractTag(block, "title");
+      const link = extractAttr(block, "link", "href") || extractTag(block, "id");
+      const pubDate = extractTag(block, "updated") || extractTag(block, "published");
+      const summary = extractTag(block, "summary") || extractTag(block, "content");
+      if (!title) continue;
+      const tsIso = toTsIso(pubDate) || new Date().toISOString();
+      items.push(normalizeIntelItem({
+        priority: source.defaultPriority || "MEDIUM",
+        text: `${title}${summary ? ` — ${summary.slice(0, 120)}` : ""}`.slice(0, 200),
+        src: `${source.src || source.name} / ${link || "ATOM"}`,
+        impact: "자동 수집 반영",
+        tsIso,
+      }));
+    }
+  }
+
+  if (items.length === 0 && source.emitChannelSummary) {
+    const channelTitle = extractTag(xml, "title");
+    const channelDesc = extractTag(xml, "description");
+    const channelLink = extractTag(xml, "link");
+    const channelTs = extractTag(xml, "lastBuildDate") || extractTag(xml, "updated");
+    const text = `${channelTitle}${channelDesc ? ` — ${channelDesc.slice(0, 120)}` : ""}`.trim();
+    if (text) {
+      items.push(normalizeIntelItem({
+        priority: source.defaultPriority || "LOW",
+        text: text.slice(0, 200),
+        src: `${source.src || source.name}${channelLink ? ` / ${channelLink}` : ""}`,
+        impact: "상태 피드 요약",
+        tsIso: toTsIso(channelTs) || new Date().toISOString(),
+        // Keep this stable even if feed timestamp changes frequently.
+        hash: toHash(`${source.id || source.name}|channel-summary|${text}`),
+      }));
+    }
+  }
+
   return items;
 }
 
@@ -400,7 +446,13 @@ async function readJsonSafe(filePath, fallback) {
 
 async function fetchSource(source) {
   const res = await fetchWithTimeout(source.url, {
-    headers: { "user-agent": "urgentdash-scraper/1.0" },
+    headers: {
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 urgentdash-scraper/1.0",
+      "accept-language": "en-US,en;q=0.9",
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "cache-control": "no-cache",
+      "pragma": "no-cache",
+    },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = await res.text();
