@@ -239,7 +239,12 @@ function GaugeArc({ value, size = 90, color, label, subLabel }) {
 const priorityColors = { CRITICAL: "#ef4444", HIGH: "#f59e0b", MEDIUM: "#3b82f6", LOW: "#22c55e" };
 const SNAPSHOT_REQUIRED_KEYS = ["intel_feed", "indicators", "hypotheses", "routes", "checklist"];
 const SNAPSHOT_POLL_MS = 30_000;
-const API_STATE_CANDIDATES = ["/api/state", "../api/state", "api/state"];
+const API_STATE_CANDIDATES = [
+  "https://raw.githubusercontent.com/macho715/iran-war-notelm/urgentdash-live/live/hyie_state.json",
+  "/api/state",
+  "../api/state",
+  "api/state",
+];
 
 function dubaiDatePart() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date());
