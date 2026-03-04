@@ -4,6 +4,8 @@ on:
   push:
     branches-ignore:
       - main
+    paths-ignore:
+      - "data/**"
   workflow_dispatch: {}
 
 permissions:
