@@ -13,10 +13,10 @@
 - 로딩 후 15분(900초) 간격으로 다시 fetch해 갱신을 시도합니다.
 - fetch 실패 시 화면은 기존 인라인 fallback 데이터(빌드 기본 상수)를 유지하고 오류 메시지를 표시합니다.
 
-## 선택: 매시간 스크랩 후 데이터 반영 (자동화)
+## 선택: 30분 간격 스크랩 후 데이터 반영 (자동화)
 
 현재 화면은 `data/dashboard.json`을 소스로 사용합니다.  
-원하면 아래 파이프라인으로 소스 데이터를 매시간 갱신한 뒤 `dashboard.json`을 덮어쓸 수 있습니다.
+원하면 아래 파이프라인으로 소스 데이터를 30분 간격으로 갱신한 뒤 `dashboard.json`을 덮어쓸 수 있습니다.
 
 - 스크래퍼: `scripts/update-dashboard.mjs`
 - 수집 소스 설정: `data/source-registry.json`
@@ -32,10 +32,10 @@ node scripts/update-dashboard.mjs
 
 성공 시 `data/dashboard.json`의 `intelFeed`가 갱신되며, 기존 `indicators/hypotheses/routes/checklist`는 유지됩니다.
 
-### GitHub Actions 자동 실행(매시간)
+### GitHub Actions 자동 실행(30분 간격)
 
 - 워크플로우: [`.github/workflows/hourly-dashboard-update.yml`](.github/workflows/hourly-dashboard-update.yml)
-- 설정된 스케줄: 매 정각(`0 * * * *`)
+- 설정된 스케줄: 매 30분(`*/30 * * * *`)
 - 변경분이 있으면 `data/dashboard.json`을 커밋 후 푸시합니다.
 
 ## 즉시 반영된 4개 핫픽스
